@@ -25,7 +25,12 @@ async function main(): Promise<void> {
   let connectionConfig
 
   while (true) {
-    connectionConfig = await promptConnection()
+    try {
+      connectionConfig = await promptConnection()
+    } catch {
+      log.info(pc.cyan("Let's try again.\n"))
+      continue
+    }
 
     // Verify host key before connecting
     s.start(`Checking host key for ${connectionConfig.host}...`)

@@ -138,11 +138,6 @@ export async function copyKeyToServer(
   pubKeyPath: string,
   port: number = 22,
 ): Promise<boolean> {
-  const hasCmd = await checkSshCopyIdInstalled()
-  if (!hasCmd) {
-    return false
-  }
-
   const args = [
     "ssh-copy-id",
     "-i", pubKeyPath,

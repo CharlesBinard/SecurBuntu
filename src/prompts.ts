@@ -81,7 +81,7 @@ export async function promptConnection(): Promise<ConnectionConfig> {
           `${pc.red(`Public key not found at ${pubKeyPath}`)}\n` +
           `  ${pc.dim("Make sure the .pub file exists alongside your private key.")}`
         )
-        process.exit(1)
+        throw new Error(`Public key not found at ${pubKeyPath}`)
       }
 
       const hasSshCopyId = await checkSshCopyIdInstalled()
@@ -92,7 +92,7 @@ export async function promptConnection(): Promise<ConnectionConfig> {
           `  ${pc.cyan("  Ubuntu/Debian: sudo apt install openssh-client")}\n` +
           `  ${pc.cyan("  macOS:         brew install ssh-copy-id")}`
         )
-        process.exit(1)
+        throw new Error("ssh-copy-id is not installed")
       }
     }
   } else {
