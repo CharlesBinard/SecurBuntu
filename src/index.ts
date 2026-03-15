@@ -3,17 +3,19 @@ import { outro, log, spinner, confirm, isCancel } from "@clack/prompts"
 import pc from "picocolors"
 import { showBanner, initVersion } from "./ui.js"
 import { connect, detectServerInfo, fetchHostKeyFingerprint, addToKnownHosts } from "./ssh.js"
-import { promptConnection, promptHardeningOptions, promptConfirmation, promptExportReport, promptExportLog } from "./prompts.js"
+import { promptConnection, promptHardeningOptions, promptConfirmation, promptExportReport, promptExportLog, promptExportAudit } from "./prompts.js"
 import { executeTasks } from "./tasks/index.js"
-import { displayReport, exportReportMarkdown } from "./report.js"
+import { displayReport, exportReportMarkdown, exportAuditMarkdown } from "./report.js"
 import { DryRunSshClient } from "./dry-run.js"
 import { LoggingSshClient } from "./logging.js"
+import { runAudit, displayAudit } from "./audit.js"
 import type { Report } from "./types.js"
 
 async function main(): Promise<void> {
   await initVersion()
   const isDryRun = process.argv.includes("--dry-run")
   const wantLog = process.argv.includes("--log")
+  const isAuditOnly = process.argv.includes("--audit")
   showBanner()
 
   // 1. Connection loop — retry until connected
@@ -81,6 +83,25 @@ async function main(): Promise<void> {
 
     if (serverInfo.usesSocketActivation) {
       log.info(pc.dim("SSH socket activation detected (Ubuntu 24.04+ mode)"))
+    }
+
+    // Audit scan
+    s.start("Scanning server security configuration...")
+    const auditResult = await runAudit(ssh)
+    s.stop("Security audit complete")
+    displayAudit(auditResult)
+
+    // Audit-only mode: export and exit
+    if (isAuditOnly) {
+      const wantExport = await promptExportAudit()
+      if (wantExport) {
+        const date = new Date().toISOString().split("T")[0] ?? ""
+        const filename = exportAuditMarkdown(auditResult, connectionConfig.host, date)
+        log.success(`Audit report saved to ${pc.cyan(filename)}`)
+      }
+      outro(pc.green("Audit complete."))
+      ssh.close()
+      return
     }
 
     // 4. System update (unconditional, unless --dry-run)
@@ -160,6 +181,7 @@ async function main(): Promise<void> {
       ubuntuVersion: serverInfo.ubuntuVersion,
       results,
       newSshPort: options.changeSshPort ? options.newSshPort : undefined,
+      audit: auditResult,
     }
 
     displayReport(report)

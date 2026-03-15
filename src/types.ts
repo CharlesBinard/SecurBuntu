@@ -49,6 +49,16 @@ export interface SysctlOptions {
   disableIcmpBroadcast: boolean
 }
 
+export interface AuditCheck {
+  name: string
+  status: string
+  detail?: string
+}
+
+export interface AuditResult {
+  checks: AuditCheck[]
+}
+
 export interface TaskResult {
   name: string
   success: boolean
@@ -64,6 +74,7 @@ export interface Report {
   ubuntuVersion: string
   results: TaskResult[]
   newSshPort?: number
+  audit?: AuditResult
 }
 
 export interface CommandResult {
