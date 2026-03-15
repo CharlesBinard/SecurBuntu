@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
-import { outro, log, spinner } from "@clack/prompts"
+import { outro, log, spinner, confirm, isCancel } from "@clack/prompts"
 import pc from "picocolors"
 import { showBanner, initVersion } from "./ui.js"
-import { connect, detectServerInfo } from "./ssh.js"
+import { connect, detectServerInfo, fetchHostKeyFingerprint, addToKnownHosts } from "./ssh.js"
 import { promptConnection, promptHardeningOptions, promptConfirmation, promptExportReport } from "./prompts.js"
 import { executeTasks } from "./tasks/index.js"
 import { displayReport, exportReportMarkdown } from "./report.js"
@@ -19,6 +19,35 @@ async function main(): Promise<void> {
 
   while (true) {
     connectionConfig = await promptConnection()
+
+    // Verify host key before connecting
+    s.start(`Checking host key for ${connectionConfig.host}...`)
+    const hostKeyResult = await fetchHostKeyFingerprint(connectionConfig.host, connectionConfig.port)
+
+    if (hostKeyResult.known) {
+      s.stop(`Host key verified for ${pc.green(connectionConfig.host)}`)
+    } else if (hostKeyResult.fingerprint) {
+      // Stop spinner BEFORE showing interactive prompt
+      s.stop("New host detected")
+      log.info(
+        `${pc.bold("Host key fingerprint:")}\n` +
+        `  ${pc.cyan(hostKeyResult.fingerprint)}`
+      )
+
+      const trust = await confirm({
+        message: "Do you trust this host?",
+      })
+
+      if (isCancel(trust) || !trust) {
+        log.info(pc.cyan("Let's try again.\n"))
+        continue
+      }
+
+      addToKnownHosts(hostKeyResult.rawKeys)
+    } else {
+      s.stop(pc.yellow("Could not fetch host key"))
+      log.warning("Unable to verify host key. The connection will proceed but the host is unverified.")
+    }
 
     s.start(`Connecting to ${connectionConfig.host}...`)
 
