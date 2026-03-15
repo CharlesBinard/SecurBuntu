@@ -61,9 +61,13 @@ export interface CommandResult {
   exitCode: number
 }
 
+export interface ExecOptions {
+  timeout?: number
+}
+
 export interface SshClient {
-  exec(command: string): Promise<CommandResult>
-  execWithStdin(command: string, stdin: string): Promise<CommandResult>
+  exec(command: string, options?: ExecOptions): Promise<CommandResult>
+  execWithStdin(command: string, stdin: string, options?: ExecOptions): Promise<CommandResult>
   writeFile(remotePath: string, content: string): Promise<void>
   readFile(remotePath: string): Promise<string>
   fileExists(remotePath: string): Promise<boolean>

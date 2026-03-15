@@ -52,7 +52,10 @@ async function main(): Promise<void> {
 
     // 4. System update (unconditional)
     s.start("Updating system packages (this may take a while)...")
-    const updateResult = await ssh.exec("DEBIAN_FRONTEND=noninteractive apt update && DEBIAN_FRONTEND=noninteractive apt upgrade -y")
+    const updateResult = await ssh.exec(
+      "DEBIAN_FRONTEND=noninteractive apt update && DEBIAN_FRONTEND=noninteractive apt upgrade -y",
+      { timeout: 900_000 },
+    )
     if (updateResult.exitCode !== 0) {
       s.stop(pc.yellow("System update completed with warnings"))
       log.warning(pc.dim(updateResult.stderr))

@@ -1,6 +1,6 @@
 import { createHash } from "crypto"
 import { existsSync } from "fs"
-import type { ConnectionConfig, CommandResult, ServerInfo, SshClient } from "./types.js"
+import type { ConnectionConfig, CommandResult, ExecOptions, ServerInfo, SshClient } from "./types.js"
 
 function hashControlPath(user: string, host: string, port: number): string {
   const hash = createHash("sha256")
@@ -25,9 +25,12 @@ function buildSshArgs(config: ConnectionConfig): string[] {
   return args
 }
 
+const DEFAULT_TIMEOUT = 300_000 // 5 minutes
+
 async function spawnSsh(
   args: string[],
   stdinData?: string,
+  timeout: number = DEFAULT_TIMEOUT,
 ): Promise<CommandResult> {
   const proc = Bun.spawn(["ssh", ...args], {
     stdin: stdinData !== undefined ? Buffer.from(stdinData) : "ignore",
@@ -35,19 +38,38 @@ async function spawnSsh(
     stderr: "pipe",
   })
 
-  const [stdout, stderr] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-  ])
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    proc.kill()
+  }, timeout)
 
-  const exitCode = await proc.exited
+  try {
+    const [stdout, stderr] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ])
 
-  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode }
+    const exitCode = await proc.exited
+
+    if (timedOut) {
+      return {
+        stdout: "",
+        stderr: `Command timed out after ${Math.round(timeout / 1000)}s`,
+        exitCode: -1,
+      }
+    }
+
+    return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode }
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 async function spawnSshpass(
   password: string,
   args: string[],
+  timeout: number = DEFAULT_TIMEOUT,
 ): Promise<CommandResult> {
   const proc = Bun.spawn(["sshpass", "-e", "ssh", ...args], {
     stdin: "ignore",
@@ -56,14 +78,32 @@ async function spawnSshpass(
     env: { ...process.env, SSHPASS: password },
   })
 
-  const [stdout, stderr] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-  ])
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    proc.kill()
+  }, timeout)
 
-  const exitCode = await proc.exited
+  try {
+    const [stdout, stderr] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ])
 
-  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode }
+    const exitCode = await proc.exited
+
+    if (timedOut) {
+      return {
+        stdout: "",
+        stderr: `Command timed out after ${Math.round(timeout / 1000)}s`,
+        exitCode: -1,
+      }
+    }
+
+    return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode }
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export async function checkSshpassInstalled(): Promise<boolean> {
@@ -184,12 +224,12 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
   const client: SshClient = {
     isRoot: rootUser,
 
-    async exec(command: string): Promise<CommandResult> {
-      return spawnSsh([...execArgs, prefixSudo(command)])
+    async exec(command: string, options?: ExecOptions): Promise<CommandResult> {
+      return spawnSsh([...execArgs, prefixSudo(command)], undefined, options?.timeout)
     },
 
-    async execWithStdin(command: string, stdin: string): Promise<CommandResult> {
-      return spawnSsh([...execArgs, prefixSudo(command)], stdin)
+    async execWithStdin(command: string, stdin: string, options?: ExecOptions): Promise<CommandResult> {
+      return spawnSsh([...execArgs, prefixSudo(command)], stdin, options?.timeout)
     },
 
     async writeFile(remotePath: string, content: string): Promise<void> {
