@@ -32,6 +32,7 @@ export interface HardeningOptions {
   enableAutoUpdates: boolean
   enableSysctl: boolean
   sysctlOptions?: SysctlOptions
+  enableSshBanner: boolean
 }
 
 export interface UfwPort {

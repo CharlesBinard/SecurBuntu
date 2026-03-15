@@ -119,6 +119,7 @@ export async function promptHardeningOptions(
     installFail2ban: false,
     enableAutoUpdates: false,
     enableSysctl: false,
+    enableSshBanner: false,
   }
 
   // 1. Create sudo user (only if root)
@@ -209,6 +210,13 @@ export async function promptHardeningOptions(
     }))
     options.newSshPort = parseInt(newPort, 10)
   }
+
+  // SSH banner
+  const enableBanner = unwrapBoolean(await p.confirm({
+    message: "Do you want to add a security warning banner to SSH?",
+    initialValue: false,
+  }))
+  options.enableSshBanner = enableBanner
 
   // 5. Disable password auth (with hard gate)
   const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
@@ -396,6 +404,7 @@ export async function promptConfirmation(
   if (options.addPersonalKey) lines.push(`  Add SSH key: ${pc.cyan(options.personalKeyPath ?? "")}`)
   lines.push(`  Coolify: ${options.configureCoolify ? pc.green("Yes") : pc.dim("No")}`)
   lines.push(`  SSH port: ${options.changeSshPort ? pc.yellow(String(sshPort)) : pc.dim("22 (default)")}`)
+  lines.push(`  SSH banner: ${options.enableSshBanner ? pc.green("Yes") : pc.dim("No")}`)
   lines.push(`  Disable password auth: ${options.disablePasswordAuth ? pc.green("Yes") : pc.dim("No")}`)
 
   if (options.installUfw) {

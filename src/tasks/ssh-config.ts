@@ -1,7 +1,7 @@
 import type { HardeningTask } from "../types.js"
 
 export const runHardenSshConfig: HardeningTask = async (ssh, options, server) => {
-  const hasChanges = options.changeSshPort || options.disablePasswordAuth || options.configureCoolify || options.createSudoUser
+  const hasChanges = options.changeSshPort || options.disablePasswordAuth || options.configureCoolify || options.createSudoUser || options.enableSshBanner
   if (!hasChanges) {
     return {
       name: "SSH Hardening",
@@ -26,7 +26,20 @@ export const runHardenSshConfig: HardeningTask = async (ssh, options, server) =>
 
   const passwordAuth = options.disablePasswordAuth ? "no" : "yes"
 
-  const configContent = [
+  // Write SSH banner if requested
+  if (options.enableSshBanner) {
+    const bannerContent = [
+      "******************************************************************",
+      "*  WARNING: Unauthorized access to this system is prohibited.    *",
+      "*  All connections are monitored and recorded.                   *",
+      "*  Disconnect IMMEDIATELY if you are not an authorized user.     *",
+      "******************************************************************",
+    ].join("\n")
+
+    await ssh.writeFile("/etc/issue.net", bannerContent)
+  }
+
+  const configLines = [
     `# SecurBuntu SSH Hardening - generated on ${date}`,
     `Port ${sshPort}`,
     `PermitRootLogin ${permitRootLogin}`,
@@ -35,7 +48,13 @@ export const runHardenSshConfig: HardeningTask = async (ssh, options, server) =>
     "AuthorizedKeysFile .ssh/authorized_keys",
     "X11Forwarding no",
     "MaxAuthTries 5",
-  ].join("\n")
+  ]
+
+  if (options.enableSshBanner) {
+    configLines.push("Banner /etc/issue.net")
+  }
+
+  const configContent = configLines.join("\n")
 
   const configPath = "/etc/ssh/sshd_config.d/01-securbuntu.conf"
   await ssh.writeFile(configPath, configContent)
@@ -98,11 +117,15 @@ export const runHardenSshConfig: HardeningTask = async (ssh, options, server) =>
 
   // Keep cloud-init backup for manual recovery if needed later
 
-  const details = [
+  const detailParts = [
     `Port: ${sshPort}`,
     `PermitRootLogin: ${permitRootLogin}`,
     `PasswordAuthentication: ${passwordAuth}`,
-  ].join(", ")
+  ]
+  if (options.enableSshBanner) {
+    detailParts.push("Banner: /etc/issue.net")
+  }
+  const details = detailParts.join(", ")
 
   return {
     name: "SSH Hardening",
