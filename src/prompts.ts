@@ -41,6 +41,10 @@ export async function promptConnection(): Promise<ConnectionConfig> {
     message: "Enter the SSH username",
     placeholder: "root",
     defaultValue: "root",
+    validate(value) {
+      if (!value || !value.trim()) return "Username is required"
+      if (!/^[a-z_][a-z0-9_-]*$/.test(value)) return "Invalid username format (lowercase letters, digits, hyphens, underscores)"
+    },
   }))
 
   const authMethod = await p.select({
@@ -212,7 +216,7 @@ export async function promptHardeningOptions(
     : (await ssh.exec("whoami")).stdout
 
   const targetHome = targetUser === "root" ? "/root" : `/home/${targetUser}`
-  const existingKeysResult = await ssh.exec(`test -f ${targetHome}/.ssh/authorized_keys && grep -c 'ssh-' ${targetHome}/.ssh/authorized_keys || echo 0`)
+  const existingKeysResult = await ssh.exec(`test -f '${targetHome}/.ssh/authorized_keys' && grep -c 'ssh-' '${targetHome}/.ssh/authorized_keys' || echo 0`)
   const hasExistingKey = parseInt(existingKeysResult.stdout, 10) > 0
 
   const willHaveKey = options.addPersonalKey || hasExistingKey
