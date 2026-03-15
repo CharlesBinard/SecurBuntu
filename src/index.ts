@@ -6,10 +6,12 @@ import { connect, detectServerInfo, fetchHostKeyFingerprint, addToKnownHosts } f
 import { promptConnection, promptHardeningOptions, promptConfirmation, promptExportReport } from "./prompts.js"
 import { executeTasks } from "./tasks/index.js"
 import { displayReport, exportReportMarkdown } from "./report.js"
+import { DryRunSshClient } from "./dry-run.js"
 import type { Report } from "./types.js"
 
 async function main(): Promise<void> {
   await initVersion()
+  const isDryRun = process.argv.includes("--dry-run")
   showBanner()
 
   // 1. Connection loop — retry until connected
@@ -79,39 +81,72 @@ async function main(): Promise<void> {
       log.info(pc.dim("SSH socket activation detected (Ubuntu 24.04+ mode)"))
     }
 
-    // 4. System update (unconditional)
-    s.start("Updating system packages (this may take a while)...")
-    const updateResult = await ssh.exec(
-      "DEBIAN_FRONTEND=noninteractive apt update && DEBIAN_FRONTEND=noninteractive apt upgrade -y",
-      { timeout: 900_000 },
-    )
-    if (updateResult.exitCode !== 0) {
-      s.stop(pc.yellow("System update completed with warnings"))
-      log.warning(pc.dim(updateResult.stderr))
+    // 4. System update (unconditional, unless --dry-run)
+    let updateSuccess = true
+    let updateMessage = "System packages updated"
+
+    if (!isDryRun) {
+      s.start("Updating system packages (this may take a while)...")
+      const updateResult = await ssh.exec(
+        "DEBIAN_FRONTEND=noninteractive apt update && DEBIAN_FRONTEND=noninteractive apt upgrade -y",
+        { timeout: 900_000 },
+      )
+      if (updateResult.exitCode !== 0) {
+        s.stop(pc.yellow("System update completed with warnings"))
+        log.warning(pc.dim(updateResult.stderr))
+        updateSuccess = false
+        updateMessage = "Completed with warnings"
+      } else {
+        s.stop("System packages updated")
+      }
     } else {
-      s.stop("System packages updated")
+      log.info(pc.yellow("[DRY-RUN] System update skipped"))
     }
 
     // 5. Interactive questionnaire
     const options = await promptHardeningOptions(serverInfo, ssh)
 
-    // 6. Confirmation
-    const confirmed = await promptConfirmation(connectionConfig.host, options)
-    if (!confirmed) {
-      outro(pc.dim("Aborted. No changes were made (except system update)."))
+    // 6. Confirmation (3-way: apply / simulate / cancel)
+    const confirmation = await promptConfirmation(connectionConfig.host, options)
+    if (!confirmation) {
+      outro(pc.dim("Aborted. No changes were made" + (isDryRun ? "." : " (except system update).")))
       ssh.close()
       return
     }
 
-    // 7. Execute hardening tasks
+    // 7. Handle dry-run (CLI flag or interactive simulate)
+    if (isDryRun || confirmation === "simulate") {
+      const dryRunSsh = new DryRunSshClient(ssh)
+      await executeTasks(dryRunSsh, options, serverInfo)
+      dryRunSsh.displaySummary()
+
+      if (isDryRun) {
+        outro(pc.dim("Dry-run complete. No changes were made."))
+        ssh.close()
+        return
+      }
+
+      // Interactive simulate: offer to apply for real
+      const applyForReal = await confirm({
+        message: "Apply these changes for real?",
+      })
+      if (isCancel(applyForReal) || !applyForReal) {
+        outro(pc.dim("Aborted. No changes were made (except system update)."))
+        ssh.close()
+        return
+      }
+    }
+
+    // 8. Execute hardening tasks for real
     const results = await executeTasks(ssh, options, serverInfo)
 
-    // Add the update result to the beginning
-    results.unshift({
-      name: "System Update",
-      success: updateResult.exitCode === 0,
-      message: updateResult.exitCode === 0 ? "System packages updated" : "Completed with warnings",
-    })
+    if (!isDryRun) {
+      results.unshift({
+        name: "System Update",
+        success: updateSuccess,
+        message: updateMessage,
+      })
+    }
 
     // 8. Report
     const report: Report = {

@@ -396,7 +396,7 @@ export async function promptHardeningOptions(
 export async function promptConfirmation(
   host: string,
   options: HardeningOptions,
-): Promise<boolean> {
+): Promise<"apply" | "simulate" | false> {
   const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
   const lines: string[] = []
 
@@ -426,11 +426,18 @@ export async function promptConfirmation(
 
   p.note(lines.join("\n"), "Summary of changes")
 
-  const confirm = unwrapBoolean(await p.confirm({
-    message: `Apply these changes to ${pc.bold(host)}?`,
-  }))
+  const action = await p.select({
+    message: `What do you want to do with ${pc.bold(host)}?`,
+    options: [
+      { value: "apply" as const, label: "Apply changes" },
+      { value: "simulate" as const, label: "Simulate first (dry-run)", hint: "preview without modifying" },
+      { value: "cancel" as const, label: "Cancel" },
+    ],
+  })
 
-  return confirm
+  if (p.isCancel(action) || action === "cancel") return false
+  if (action === "apply" || action === "simulate") return action
+  return false
 }
 
 export async function promptExportReport(): Promise<boolean> {
