@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
+import { existsSync } from "fs"
 import { outro, log, spinner, confirm, isCancel } from "@clack/prompts"
 import pc from "picocolors"
 import { showBanner, initVersion } from "./ui.js"
-import { connect, detectServerInfo, fetchHostKeyFingerprint, addToKnownHosts } from "./ssh.js"
-import { promptConnection, promptHardeningOptions, promptConfirmation, promptExportReport, promptExportLog, promptExportAudit } from "./prompts.js"
+import { connect, detectServerInfo, fetchHostKeyFingerprint, addToKnownHosts, copyKeyToServer, checkSshCopyIdInstalled } from "./ssh.js"
+import { promptConnection, promptHardeningOptions, promptConfirmation, promptExportReport, promptExportLog, promptExportAudit, promptCopyKeyOnFailure } from "./prompts.js"
 import { executeTasks } from "./tasks/index.js"
 import { displayReport, exportReportMarkdown, exportAuditMarkdown } from "./report.js"
 import { DryRunSshClient } from "./dry-run.js"
@@ -55,6 +56,28 @@ async function main(): Promise<void> {
       log.warning("Unable to verify host key. The connection will proceed but the host is unverified.")
     }
 
+    // Entry Point 1: Handle "copy" auth method — copy key before attempting connection
+    if (connectionConfig.authMethod === "copy" && connectionConfig.privateKeyPath) {
+      const pubKeyPath = connectionConfig.privateKeyPath + ".pub"
+      log.info(pc.dim("Copying your SSH key to the server..."))
+
+      const copied = await copyKeyToServer(
+        connectionConfig.host,
+        connectionConfig.username,
+        pubKeyPath,
+        connectionConfig.port,
+      )
+
+      if (copied) {
+        log.success("SSH key copied successfully. Connecting with key auth...")
+        connectionConfig.authMethod = "key"
+      } else {
+        log.error(pc.red("Failed to copy SSH key. Check the password and try again."))
+        log.info(pc.cyan("Let's try again.\n"))
+        continue
+      }
+    }
+
     s.start(`Connecting to ${connectionConfig.host}...`)
 
     try {
@@ -64,13 +87,60 @@ async function main(): Promise<void> {
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error"
       s.stop(pc.red(`Connection failed: ${msg}`))
-      log.warning(
-        `${pc.bold("Troubleshooting:")}\n` +
-        `  ${pc.dim("- Verify the IP address and port")}\n` +
-        `  ${pc.dim("- Check that SSH is running on the server")}\n` +
-        `  ${pc.dim("- Verify your credentials (key path or password)")}\n` +
-        `  ${pc.dim("- Check network connectivity")}`,
-      )
+
+      // Entry Point 2: auto-propose key copy on "Permission denied (publickey)"
+      if (
+        connectionConfig.authMethod === "key" &&
+        connectionConfig.privateKeyPath &&
+        msg.includes("Permission denied")
+      ) {
+        const wantCopy = await promptCopyKeyOnFailure()
+        if (wantCopy) {
+          const pubKeyPath = connectionConfig.privateKeyPath + ".pub"
+
+          if (!existsSync(pubKeyPath)) {
+            log.error(pc.red(`Public key not found at ${pubKeyPath}`))
+            log.info(pc.cyan("Let's try again.\n"))
+            continue
+          }
+
+          const hasSshCopyId = await checkSshCopyIdInstalled()
+          if (!hasSshCopyId) {
+            log.error(
+              `${pc.red("ssh-copy-id is required but is not installed.")}\n` +
+              `  ${pc.dim("Install it with:")}\n` +
+              `  ${pc.cyan("  Ubuntu/Debian: sudo apt install openssh-client")}\n` +
+              `  ${pc.cyan("  macOS:         brew install ssh-copy-id")}`
+            )
+            log.info(pc.cyan("Let's try again.\n"))
+            continue
+          }
+
+          log.info(pc.dim("Copying your SSH key to the server..."))
+          const copied = await copyKeyToServer(
+            connectionConfig.host,
+            connectionConfig.username,
+            pubKeyPath,
+            connectionConfig.port,
+          )
+
+          if (copied) {
+            log.success("SSH key copied successfully. Reconnecting...")
+            continue // retry the loop — authMethod is still "key"
+          } else {
+            log.error(pc.red("Failed to copy SSH key. Check the password and try again."))
+          }
+        }
+      } else {
+        log.warning(
+          `${pc.bold("Troubleshooting:")}\n` +
+          `  ${pc.dim("- Verify the IP address and port")}\n` +
+          `  ${pc.dim("- Check that SSH is running on the server")}\n` +
+          `  ${pc.dim("- Verify your credentials (key path or password)")}\n` +
+          `  ${pc.dim("- Check network connectivity")}`,
+        )
+      }
+
       log.info(pc.cyan("Let's try again.\n"))
     }
   }
