@@ -1,5 +1,9 @@
 import type { HardeningTask } from "../types.js"
 
+function escapeShellQuote(s: string): string {
+  return s.replace(/'/g, "'\\''")
+}
+
 export const runConfigureUfw: HardeningTask = async (ssh, options) => {
   if (!options.installUfw) {
     return {
@@ -24,15 +28,16 @@ export const runConfigureUfw: HardeningTask = async (ssh, options) => {
 
   for (const rule of options.ufwPorts) {
     if (rule.protocol === "both") {
-      const tcpResult = await ssh.exec(`ufw allow ${rule.port}/tcp comment '${rule.comment}'`)
-      const udpResult = await ssh.exec(`ufw allow ${rule.port}/udp comment '${rule.comment}'`)
+      const escapedComment = escapeShellQuote(rule.comment)
+      const tcpResult = await ssh.exec(`ufw allow ${rule.port}/tcp comment '${escapedComment}'`)
+      const udpResult = await ssh.exec(`ufw allow ${rule.port}/udp comment '${escapedComment}'`)
       if (tcpResult.exitCode !== 0 || udpResult.exitCode !== 0) {
         failedRules.push(`${rule.port}/tcp+udp`)
       } else {
         addedRules.push(`${rule.port}/tcp+udp`)
       }
     } else {
-      const ruleResult = await ssh.exec(`ufw allow ${rule.port}/${rule.protocol} comment '${rule.comment}'`)
+      const ruleResult = await ssh.exec(`ufw allow ${rule.port}/${rule.protocol} comment '${escapeShellQuote(rule.comment)}'`)
       if (ruleResult.exitCode !== 0) {
         failedRules.push(`${rule.port}/${rule.protocol}`)
       } else {
