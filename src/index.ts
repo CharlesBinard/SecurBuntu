@@ -12,28 +12,32 @@ async function main(): Promise<void> {
   await initVersion()
   showBanner()
 
-  // 1. Connection prompts
-  const connectionConfig = await promptConnection()
-
-  // 2. Connect via SSH
+  // 1. Connection loop — retry until connected
   const s = spinner()
-  s.start(`Connecting to ${connectionConfig.host}...`)
-
   let ssh
-  try {
-    ssh = await connect(connectionConfig)
-    s.stop(`Connected to ${pc.green(connectionConfig.host)}`)
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Unknown error"
-    s.stop(pc.red(`Connection failed: ${msg}`))
-    log.error(
-      `${pc.bold("Troubleshooting:")}\n` +
-      `  ${pc.dim("- Verify the IP address and port")}\n` +
-      `  ${pc.dim("- Check that SSH is running on the server")}\n` +
-      `  ${pc.dim("- Verify your credentials (key path or password)")}\n` +
-      `  ${pc.dim("- Check network connectivity")}`,
-    )
-    process.exit(1)
+  let connectionConfig
+
+  while (true) {
+    connectionConfig = await promptConnection()
+
+    s.start(`Connecting to ${connectionConfig.host}...`)
+
+    try {
+      ssh = await connect(connectionConfig)
+      s.stop(`Connected to ${pc.green(connectionConfig.host)}`)
+      break
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Unknown error"
+      s.stop(pc.red(`Connection failed: ${msg}`))
+      log.warning(
+        `${pc.bold("Troubleshooting:")}\n` +
+        `  ${pc.dim("- Verify the IP address and port")}\n` +
+        `  ${pc.dim("- Check that SSH is running on the server")}\n` +
+        `  ${pc.dim("- Verify your credentials (key path or password)")}\n` +
+        `  ${pc.dim("- Check network connectivity")}`,
+      )
+      log.info(pc.cyan("Let's try again.\n"))
+    }
   }
 
   try {
