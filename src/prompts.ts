@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
 import { readFileSync, existsSync } from "fs"
-import { detectDefaultKeyPath, detectDefaultPubKeyPath, checkSshpassInstalled } from "./ssh.js"
+import { detectDefaultKeyPath, detectDefaultPubKeyPath, checkSshpassInstalled, checkSshCopyIdInstalled } from "./ssh.js"
 import type { ConnectionConfig, HardeningOptions, ServerInfo, SshClient, UfwPort } from "./types.js"
 
 function isCancel(value: unknown): value is symbol {
@@ -52,6 +52,7 @@ export async function promptConnection(): Promise<ConnectionConfig> {
     options: [
       { value: "key" as const, label: "SSH Key", hint: "recommended" },
       { value: "password" as const, label: "Password" },
+      { value: "copy" as const, label: "Copy my SSH key to server", hint: "needs password" },
     ],
   })
   if (isCancel(authMethod)) handleCancel()
@@ -59,7 +60,7 @@ export async function promptConnection(): Promise<ConnectionConfig> {
   let privateKeyPath: string | undefined
   let password: string | undefined
 
-  if (authMethod === "key") {
+  if (authMethod === "key" || authMethod === "copy") {
     const defaultKey = detectDefaultKeyPath()
     const keyPath = unwrapText(await p.text({
       message: "Path to your private SSH key",
@@ -72,6 +73,28 @@ export async function promptConnection(): Promise<ConnectionConfig> {
       },
     }))
     privateKeyPath = keyPath.replace("~", process.env.HOME ?? "")
+
+    if (authMethod === "copy") {
+      const pubKeyPath = privateKeyPath + ".pub"
+      if (!existsSync(pubKeyPath)) {
+        p.log.error(
+          `${pc.red(`Public key not found at ${pubKeyPath}`)}\n` +
+          `  ${pc.dim("Make sure the .pub file exists alongside your private key.")}`
+        )
+        process.exit(1)
+      }
+
+      const hasSshCopyId = await checkSshCopyIdInstalled()
+      if (!hasSshCopyId) {
+        p.log.error(
+          `${pc.red("ssh-copy-id is required but is not installed.")}\n` +
+          `  ${pc.dim("Install it with:")}\n` +
+          `  ${pc.cyan("  Ubuntu/Debian: sudo apt install openssh-client")}\n` +
+          `  ${pc.cyan("  macOS:         brew install ssh-copy-id")}`
+        )
+        process.exit(1)
+      }
+    }
   } else {
     const hasSshpass = await checkSshpassInstalled()
     if (!hasSshpass) {
@@ -462,4 +485,16 @@ export async function promptExportAudit(): Promise<boolean> {
     initialValue: false,
   }))
   return exportAudit
+}
+
+export async function promptCopyKeyOnFailure(): Promise<boolean> {
+  const action = await p.select({
+    message: "Would you like to copy your SSH key to the server?",
+    options: [
+      { value: "yes" as const, label: "Yes, copy my key", hint: "needs password" },
+      { value: "no" as const, label: "No, let me try different credentials" },
+    ],
+  })
+  if (isCancel(action)) handleCancel()
+  return action === "yes"
 }
