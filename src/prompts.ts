@@ -447,3 +447,19 @@ export async function promptExportReport(): Promise<boolean> {
   }))
   return exportReport
 }
+
+export async function promptExportLog(): Promise<boolean> {
+  const exportLog = unwrapBoolean(await p.confirm({
+    message: "Do you want to save a detailed log of all commands executed?",
+    initialValue: false,
+  }))
+  return exportLog
+}
+
+export async function promptExportAudit(): Promise<boolean> {
+  const exportAudit = unwrapBoolean(await p.confirm({
+    message: "Do you want to export the audit report as a Markdown file?",
+    initialValue: false,
+  }))
+  return exportAudit
+}

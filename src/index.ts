@@ -3,15 +3,17 @@ import { outro, log, spinner, confirm, isCancel } from "@clack/prompts"
 import pc from "picocolors"
 import { showBanner, initVersion } from "./ui.js"
 import { connect, detectServerInfo, fetchHostKeyFingerprint, addToKnownHosts } from "./ssh.js"
-import { promptConnection, promptHardeningOptions, promptConfirmation, promptExportReport } from "./prompts.js"
+import { promptConnection, promptHardeningOptions, promptConfirmation, promptExportReport, promptExportLog } from "./prompts.js"
 import { executeTasks } from "./tasks/index.js"
 import { displayReport, exportReportMarkdown } from "./report.js"
 import { DryRunSshClient } from "./dry-run.js"
+import { LoggingSshClient } from "./logging.js"
 import type { Report } from "./types.js"
 
 async function main(): Promise<void> {
   await initVersion()
   const isDryRun = process.argv.includes("--dry-run")
+  const wantLog = process.argv.includes("--log")
   showBanner()
 
   // 1. Connection loop — retry until connected
@@ -138,7 +140,8 @@ async function main(): Promise<void> {
     }
 
     // 8. Execute hardening tasks for real
-    const results = await executeTasks(ssh, options, serverInfo)
+    const loggingSsh = new LoggingSshClient(ssh)
+    const results = await executeTasks(loggingSsh, options, serverInfo)
 
     if (!isDryRun) {
       results.unshift({
@@ -160,6 +163,18 @@ async function main(): Promise<void> {
     }
 
     displayReport(report)
+
+    // Log file handling
+    if (loggingSsh.hasEntries()) {
+      const shouldSaveLog = wantLog || await promptExportLog()
+      if (shouldSaveLog) {
+        const sanitizedIp = connectionConfig.host.replace(/:/g, "-")
+        const date = new Date().toISOString().split("T")[0] ?? "unknown"
+        const logFilename = `securbuntu-log-${sanitizedIp}-${date}.txt`
+        loggingSsh.flush(logFilename)
+        log.success(`Log saved to ${pc.cyan(logFilename)}`)
+      }
+    }
 
     const wantExport = await promptExportReport()
     if (wantExport) {
