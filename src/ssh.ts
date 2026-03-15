@@ -119,6 +119,48 @@ export async function checkSshpassInstalled(): Promise<boolean> {
   }
 }
 
+export async function checkSshCopyIdInstalled(): Promise<boolean> {
+  try {
+    const proc = Bun.spawn(["which", "ssh-copy-id"], {
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    await proc.exited
+    return proc.exitCode === 0
+  } catch {
+    return false
+  }
+}
+
+export async function copyKeyToServer(
+  host: string,
+  user: string,
+  pubKeyPath: string,
+  port: number = 22,
+): Promise<boolean> {
+  const hasCmd = await checkSshCopyIdInstalled()
+  if (!hasCmd) {
+    return false
+  }
+
+  const args = [
+    "ssh-copy-id",
+    "-i", pubKeyPath,
+    "-p", String(port),
+    "-o", "StrictHostKeyChecking=yes",
+    `${user}@${host}`,
+  ]
+
+  const proc = Bun.spawn(args, {
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+  })
+
+  const exitCode = await proc.exited
+  return exitCode === 0
+}
+
 export type HostKeyResult =
   | { known: true }
   | { known: false; fingerprint: string; rawKeys: string }

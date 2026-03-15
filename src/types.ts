@@ -2,7 +2,7 @@ export interface ConnectionConfig {
   host: string
   port: number
   username: string
-  authMethod: "key" | "password"
+  authMethod: "key" | "password" | "copy"
   privateKeyPath?: string
   password?: string
   controlPath: string
