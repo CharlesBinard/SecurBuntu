@@ -30,12 +30,22 @@ export interface HardeningOptions {
   ufwPorts: UfwPort[]
   installFail2ban: boolean
   enableAutoUpdates: boolean
+  enableSysctl: boolean
+  sysctlOptions?: SysctlOptions
 }
 
 export interface UfwPort {
   port: string
   protocol: "tcp" | "udp" | "both"
   comment: string
+}
+
+export interface SysctlOptions {
+  blockForwarding: boolean
+  ignoreRedirects: boolean
+  disableSourceRouting: boolean
+  synFloodProtection: boolean
+  disableIcmpBroadcast: boolean
 }
 
 export interface TaskResult {

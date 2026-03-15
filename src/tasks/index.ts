@@ -7,6 +7,7 @@ import { runConfigureUfw } from "./ufw.js"
 import { runConfigureFail2ban } from "./fail2ban.js"
 import { runConfigureUnattended } from "./unattended.js"
 import { runHardenSshConfig } from "./ssh-config.js"
+import { runConfigureSysctl } from "./sysctl.js"
 
 interface TaskEntry {
   label: string
@@ -20,6 +21,7 @@ const TASKS: TaskEntry[] = [
   { label: "Configuring UFW firewall", run: runConfigureUfw },
   { label: "Configuring Fail2ban", run: runConfigureFail2ban },
   { label: "Configuring automatic updates", run: runConfigureUnattended },
+  { label: "Applying kernel hardening", run: runConfigureSysctl },
   { label: "Hardening SSH configuration", run: runHardenSshConfig },
 ]
 
