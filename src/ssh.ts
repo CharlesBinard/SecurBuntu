@@ -1,0 +1,264 @@
+import { createHash } from "crypto"
+import { existsSync } from "fs"
+import type { ConnectionConfig, CommandResult, ServerInfo, SshClient } from "./types.js"
+
+function hashControlPath(user: string, host: string, port: number): string {
+  const hash = createHash("sha256")
+    .update(`${user}@${host}:${port}`)
+    .digest("hex")
+    .slice(0, 12)
+  return `/tmp/securbuntu-${hash}`
+}
+
+function buildSshArgs(config: ConnectionConfig): string[] {
+  const args: string[] = [
+    "-o", "ControlPath=" + config.controlPath,
+    "-o", "StrictHostKeyChecking=accept-new",
+    "-o", "ConnectTimeout=10",
+    "-p", String(config.port),
+  ]
+
+  if (config.authMethod === "key" && config.privateKeyPath) {
+    args.push("-i", config.privateKeyPath)
+  }
+
+  return args
+}
+
+async function spawnSsh(
+  args: string[],
+  stdinData?: string,
+): Promise<CommandResult> {
+  const proc = Bun.spawn(["ssh", ...args], {
+    stdin: stdinData !== undefined ? Buffer.from(stdinData) : "ignore",
+    stdout: "pipe",
+    stderr: "pipe",
+  })
+
+  const [stdout, stderr] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ])
+
+  const exitCode = await proc.exited
+
+  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode }
+}
+
+async function spawnSshpass(
+  password: string,
+  args: string[],
+): Promise<CommandResult> {
+  const proc = Bun.spawn(["sshpass", "-e", "ssh", ...args], {
+    stdin: "ignore",
+    stdout: "pipe",
+    stderr: "pipe",
+    env: { ...process.env, SSHPASS: password },
+  })
+
+  const [stdout, stderr] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ])
+
+  const exitCode = await proc.exited
+
+  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode }
+}
+
+export async function checkSshpassInstalled(): Promise<boolean> {
+  try {
+    const proc = Bun.spawn(["which", "sshpass"], {
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    await proc.exited
+    return proc.exitCode === 0
+  } catch {
+    return false
+  }
+}
+
+export function detectDefaultKeyPath(): string | undefined {
+  const home = process.env.HOME ?? ""
+  const candidates = [
+    `${home}/.ssh/id_ed25519`,
+    `${home}/.ssh/id_ecdsa`,
+    `${home}/.ssh/id_rsa`,
+  ]
+  for (const candidate of candidates) {
+    try {
+      if (existsSync(candidate)) return candidate
+    } catch {
+      continue
+    }
+  }
+  return undefined
+}
+
+export function detectDefaultPubKeyPath(): string | undefined {
+  const home = process.env.HOME ?? ""
+  const candidates = [
+    `${home}/.ssh/id_ed25519.pub`,
+    `${home}/.ssh/id_ecdsa.pub`,
+    `${home}/.ssh/id_rsa.pub`,
+  ]
+  for (const candidate of candidates) {
+    try {
+      if (existsSync(candidate)) return candidate
+    } catch {
+      continue
+    }
+  }
+  return undefined
+}
+
+export async function connect(config: ConnectionConfig): Promise<SshClient> {
+  const controlPath = hashControlPath(config.username, config.host, config.port)
+  const fullConfig: ConnectionConfig = { ...config, controlPath }
+
+  const masterArgs = [
+    ...buildSshArgs(fullConfig),
+    "-o", "ControlMaster=yes",
+    "-o", "ControlPersist=600",
+    "-N", "-f",
+    `${fullConfig.username}@${fullConfig.host}`,
+  ]
+
+  let result: CommandResult
+  if (fullConfig.authMethod === "password" && fullConfig.password) {
+    result = await spawnSshpass(fullConfig.password, masterArgs)
+  } else {
+    result = await spawnSsh(masterArgs)
+  }
+
+  if (result.exitCode !== 0) {
+    throw new Error(`SSH connection failed: ${result.stderr}`)
+  }
+
+  const cleanup = () => {
+    try {
+      Bun.spawnSync([
+        "ssh",
+        "-o", "ControlPath=" + controlPath,
+        "-O", "exit",
+        `${fullConfig.username}@${fullConfig.host}`,
+      ], { stdout: "ignore", stderr: "ignore" })
+    } catch {
+      // Best-effort cleanup
+    }
+  }
+
+  const handleSignal = () => {
+    cleanup()
+    process.exit(1)
+  }
+  process.on("SIGINT", handleSignal)
+  process.on("SIGTERM", handleSignal)
+
+  const execArgs = [
+    "-o", "ControlPath=" + controlPath,
+    "-o", "ControlMaster=no",
+    `${fullConfig.username}@${fullConfig.host}`,
+  ]
+
+  const whoamiResult = await spawnSsh([...execArgs, "whoami"])
+  const rootUser = whoamiResult.stdout === "root"
+
+  // Validate sudo access for non-root users
+  if (!rootUser) {
+    const sudoCheck = await spawnSsh([...execArgs, "sudo -n true 2>&1"])
+    if (sudoCheck.exitCode !== 0) {
+      cleanup()
+      throw new Error(
+        "Non-root user does not have passwordless sudo access. " +
+        "Please connect as root or configure NOPASSWD sudo for this user."
+      )
+    }
+  }
+
+  function prefixSudo(command: string): string {
+    return rootUser ? command : `sudo -n ${command}`
+  }
+
+  const client: SshClient = {
+    isRoot: rootUser,
+
+    async exec(command: string): Promise<CommandResult> {
+      return spawnSsh([...execArgs, prefixSudo(command)])
+    },
+
+    async execWithStdin(command: string, stdin: string): Promise<CommandResult> {
+      return spawnSsh([...execArgs, prefixSudo(command)], stdin)
+    },
+
+    async writeFile(remotePath: string, content: string): Promise<void> {
+      const result = await spawnSsh(
+        [...execArgs, prefixSudo(`tee '${remotePath}' > /dev/null`)],
+        content,
+      )
+      if (result.exitCode !== 0) {
+        throw new Error(`Failed to write ${remotePath}: ${result.stderr}`)
+      }
+    },
+
+    async readFile(remotePath: string): Promise<string> {
+      const result = await spawnSsh([...execArgs, prefixSudo(`cat '${remotePath}'`)])
+      if (result.exitCode !== 0) {
+        throw new Error(`Failed to read ${remotePath}: ${result.stderr}`)
+      }
+      return result.stdout
+    },
+
+    async fileExists(remotePath: string): Promise<boolean> {
+      const result = await spawnSsh([...execArgs, prefixSudo(`test -f '${remotePath}' && echo yes`)])
+      return result.stdout === "yes"
+    },
+
+    close(): void {
+      process.removeListener("SIGINT", handleSignal)
+      process.removeListener("SIGTERM", handleSignal)
+      cleanup()
+    },
+  }
+
+  return client
+}
+
+export async function detectServerInfo(ssh: SshClient): Promise<ServerInfo> {
+  const osResult = await ssh.exec(". /etc/os-release && echo \"$ID|$VERSION_ID|$VERSION_CODENAME\"")
+  if (osResult.exitCode !== 0) {
+    throw new Error("Failed to detect OS: " + osResult.stderr)
+  }
+
+  const parts = osResult.stdout.split("|")
+  if (parts.length < 3 || parts[0] !== "ubuntu") {
+    throw new Error(`Unsupported OS: ${parts[0] ?? "unknown"}. SecurBuntu only supports Ubuntu.`)
+  }
+
+  const versionId = parts[1] ?? ""
+  const versionParts = versionId.split(".")
+  const major = parseInt(versionParts[0] ?? "0", 10)
+  const minor = parseInt(versionParts[1] ?? "0", 10)
+  if (major < 22 || (major === 22 && minor < 4)) {
+    throw new Error(`Ubuntu ${versionId} is not supported. Minimum required: 22.04`)
+  }
+
+  const socketResult = await ssh.exec("systemctl is-active ssh.socket 2>/dev/null || true")
+  const cloudInitResult = await ssh.exec("test -f /etc/ssh/sshd_config.d/50-cloud-init.conf && echo yes || echo no")
+
+  return {
+    ubuntuVersion: versionId,
+    ubuntuCodename: parts[2] ?? "",
+    usesSocketActivation: socketResult.stdout === "active",
+    hasCloudInit: cloudInitResult.stdout === "yes",
+    isRoot: ssh.isRoot,
+  }
+}
+
+export async function reconnect(
+  config: ConnectionConfig,
+  newPort: number,
+): Promise<SshClient> {
+  return connect({ ...config, port: newPort })
+}
