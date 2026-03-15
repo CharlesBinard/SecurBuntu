@@ -49,7 +49,8 @@ If "Yes":
 
 | File | Change |
 |------|--------|
-| `src/ssh.ts` | Add `copyKeyToServer()` function |
+| `src/types.ts` | Widen `authMethod` to `"key" \| "password" \| "copy"` |
+| `src/ssh.ts` | Add exported `copyKeyToServer()` function |
 | `src/prompts.ts` | Add 3rd auth option + "copy key?" prompt on failure |
 | `src/index.ts` | Wire detection of key auth failure + reconnection flow |
 
@@ -58,18 +59,21 @@ If "Yes":
 Location: `src/ssh.ts`
 
 ```typescript
-async function copyKeyToServer(
+export async function copyKeyToServer(
   host: string,
   user: string,
   pubKeyPath: string,
+  port: number = 22,
 ): Promise<boolean>
 ```
 
 - Verify `ssh-copy-id` is available via `which ssh-copy-id`
-- Execute: `ssh-copy-id -i <pubKeyPath> -o StrictHostKeyChecking=yes <user>@<host>`
-- Use `stdio: "inherit"` so the user types their password directly in the terminal
+- Execute: `ssh-copy-id -i <pubKeyPath> -p <port> -o StrictHostKeyChecking=yes <user>@<host>`
+- Spawns `ssh-copy-id` directly via `Bun.spawn` with `stdin: "inherit"`, `stdout: "inherit"`, `stderr: "inherit"` — does NOT use the internal `spawnSsh()` helper (which pipes stdio)
+- This opens an independent TCP connection, bypassing ControlMaster (which is not yet established at key-copy time)
 - Return `true` if exit code is 0, `false` otherwise
 - No `sshpass` dependency — `ssh-copy-id` handles the password prompt natively
+- **Prerequisite:** host key must already be in `known_hosts` before calling this function. The host key verification step in `index.ts` runs before any connection attempt, so `addToKnownHosts()` will already have been called
 
 ### Prompts changes
 
@@ -110,7 +114,7 @@ The connection loop naturally restarts with the same credentials but now key aut
 
 - **`.pub` file not found**: Show error "Public key not found at {path}. Make sure the .pub file exists alongside your private key."
 - **`ssh-copy-id` not installed**: Check with `which ssh-copy-id`. If absent, show install instructions (same pattern as sshpass check). Very unlikely since it ships with openssh-client.
-- **Non-standard SSH port**: Not relevant at this point — the user is connecting for the first time, so the server is on its default port. If we later support specifying a port before connection, we can pass `-p <port>` to ssh-copy-id.
+- **Non-standard SSH port**: `copyKeyToServer()` accepts a `port` parameter (defaults to 22) and passes `-p <port>` to `ssh-copy-id`.
 - **User cancels password prompt**: `ssh-copy-id` returns non-zero exit code, handled as failure.
 - **Key already on server**: `ssh-copy-id` is idempotent — it skips keys already present. No harm done.
 
@@ -118,5 +122,5 @@ The connection loop naturally restarts with the same credentials but now key aut
 
 - Password auth flow (sshpass remains for full password sessions)
 - SSH key injection task (`src/tasks/ssh-keys.ts`) — this injects keys AFTER connection for additional users (e.g., sudo user, Coolify root)
-- Types — no new interfaces needed, auth method already uses string values
+- Types — only `authMethod` union is widened to include `"copy"`, no new interfaces
 - DryRunSshClient / LoggingSshClient — unaffected (connection happens before these wrappers)
