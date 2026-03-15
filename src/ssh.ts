@@ -256,9 +256,3 @@ export async function detectServerInfo(ssh: SshClient): Promise<ServerInfo> {
   }
 }
 
-export async function reconnect(
-  config: ConnectionConfig,
-  newPort: number,
-): Promise<SshClient> {
-  return connect({ ...config, port: newPort })
-}

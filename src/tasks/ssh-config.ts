@@ -96,9 +96,7 @@ export const runHardenSshConfig: HardeningTask = async (ssh, options, server) =>
     }
   }
 
-  if (cloudInitBackedUp) {
-    await ssh.exec(`rm -f '${cloudInitPath}.securbuntu-backup'`)
-  }
+  // Keep cloud-init backup for manual recovery if needed later
 
   const details = [
     `Port: ${sshPort}`,

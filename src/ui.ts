@@ -36,18 +36,3 @@ ${pc.cyan(pc.bold("  |____/ \\___|\\___|\\__,_|_|  |____/ \\__,_|_| |_|\\__|\\__
   intro(pc.bgCyan(pc.black(" SecurBuntu ")))
 }
 
-export function formatSuccess(message: string): string {
-  return `${pc.green("✓")} ${message}`
-}
-
-export function formatError(message: string): string {
-  return `${pc.red("✗")} ${message}`
-}
-
-export function formatWarning(message: string): string {
-  return `${pc.yellow("!")} ${message}`
-}
-
-export function formatInfo(message: string): string {
-  return `${pc.cyan("→")} ${message}`
-}
