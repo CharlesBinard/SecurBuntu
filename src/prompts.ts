@@ -47,6 +47,18 @@ export async function promptConnection(): Promise<ConnectionConfig> {
     },
   }))
 
+  const portStr = unwrapText(await p.text({
+    message: "SSH port",
+    placeholder: "22",
+    defaultValue: "22",
+    validate(value) {
+      if (!value) return "Port is required"
+      const port = parseInt(value, 10)
+      if (isNaN(port) || port < 1 || port > 65535) return "Port must be between 1 and 65535"
+    },
+  }))
+  const port = parseInt(portStr, 10)
+
   const authMethod = await p.select({
     message: "How do you want to authenticate?",
     options: [
@@ -118,7 +130,7 @@ export async function promptConnection(): Promise<ConnectionConfig> {
 
   return {
     host: host.trim(),
-    port: 22,
+    port,
     username: username.trim(),
     authMethod,
     privateKeyPath,
@@ -357,18 +369,26 @@ export async function promptHardeningOptions(
       return { port, protocol, comment }
     })
 
-    // Custom port option
-    const addCustom = unwrapBoolean(await p.confirm({
+    // Custom ports loop
+    let addMore = unwrapBoolean(await p.confirm({
       message: "Do you want to add a custom port?",
       initialValue: false,
     }))
 
-    if (addCustom) {
+    while (addMore) {
       const customPort = unwrapText(await p.text({
         message: "Enter port or range (e.g., 8080 or 6000:6100)",
         validate(value) {
           if (!value || !value.trim()) return "Port is required"
           if (!/^\d+(?::\d+)?$/.test(value)) return "Invalid format. Use: 8080 or 6000:6100"
+          const parts = value.split(":")
+          for (const part of parts) {
+            const n = parseInt(part, 10)
+            if (n < 1 || n > 65535) return "Port must be between 1 and 65535"
+          }
+          if (parts.length === 2 && parseInt(parts[0]!, 10) >= parseInt(parts[1]!, 10)) {
+            return "Range start must be less than range end"
+          }
         },
       }))
 
@@ -387,6 +407,11 @@ export async function promptHardeningOptions(
         protocol: customProto,
         comment: `SecurBuntu: Custom port ${customPort}`,
       })
+
+      addMore = unwrapBoolean(await p.confirm({
+        message: "Add another custom port?",
+        initialValue: false,
+      }))
     }
   }
 

@@ -23,7 +23,19 @@ export function displayReport(report: Report): void {
     }
   }
 
-  if (report.audit) {
+  if (report.audit && report.postAudit) {
+    lines.push("")
+    lines.push(pc.bold("Before / After:"))
+    for (let i = 0; i < report.audit.checks.length; i++) {
+      const before = report.audit.checks[i]!
+      const after = report.postAudit.checks[i]
+      const afterStatus = after?.status ?? "—"
+      const changed = before.status !== afterStatus
+      const arrow = changed ? pc.green("→") : pc.dim("→")
+      const afterColored = changed ? pc.green(afterStatus) : pc.dim(afterStatus)
+      lines.push(`  ${pc.dim(before.name)}: ${before.status} ${arrow} ${afterColored}`)
+    }
+  } else if (report.audit) {
     lines.push("")
     lines.push(pc.bold("Audit (pre-hardening):"))
     for (const check of report.audit.checks) {
@@ -76,7 +88,20 @@ export function exportReportMarkdown(report: Report): string {
     lines.push("")
   }
 
-  if (report.audit) {
+  if (report.audit && report.postAudit) {
+    lines.push("## Before / After")
+    lines.push("")
+    lines.push("| Check | Before | After |")
+    lines.push("|-------|--------|-------|")
+    for (let i = 0; i < report.audit.checks.length; i++) {
+      const before = report.audit.checks[i]!
+      const after = report.postAudit.checks[i]
+      const afterStatus = after?.status ?? "—"
+      const changed = before.status !== afterStatus ? " **changed**" : ""
+      lines.push(`| ${before.name} | ${before.status} | ${afterStatus}${changed} |`)
+    }
+    lines.push("")
+  } else if (report.audit) {
     lines.push("## Pre-Hardening Audit")
     lines.push("")
     lines.push("| Check | Status |")
