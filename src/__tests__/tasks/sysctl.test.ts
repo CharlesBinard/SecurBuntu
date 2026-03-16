@@ -1,7 +1,7 @@
-import { describe, test, expect } from "bun:test"
-import { MockSshClient } from "../helpers/mock-ssh.js"
+import { describe, expect, test } from "bun:test"
 import { runConfigureSysctl } from "../../tasks/sysctl.js"
 import type { HardeningOptions, ServerInfo, SysctlOptions } from "../../types.js"
+import { MockSshClient } from "../helpers/mock-ssh.js"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,
@@ -142,7 +142,13 @@ describe("runConfigureSysctl", () => {
     const options = {
       ...defaultOptions,
       enableSysctl: true,
-      sysctlOptions: { ...allSysctl, blockForwarding: false, ignoreRedirects: false, disableSourceRouting: false, disableIcmpBroadcast: false },
+      sysctlOptions: {
+        ...allSysctl,
+        blockForwarding: false,
+        ignoreRedirects: false,
+        disableSourceRouting: false,
+        disableIcmpBroadcast: false,
+      },
     }
 
     await runConfigureSysctl(ssh, options, defaultServer)

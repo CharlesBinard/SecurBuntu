@@ -1,8 +1,13 @@
 import type { HardeningTask } from "../types.js"
 
 export const runHardenSshConfig: HardeningTask = async (ssh, options, server) => {
-  const hasChanges = options.changeSshPort || options.disablePasswordAuth || options.enableSshBanner ||
-    options.permitRootLogin !== "yes" || options.disableX11Forwarding || options.maxAuthTries !== 6
+  const hasChanges =
+    options.changeSshPort ||
+    options.disablePasswordAuth ||
+    options.enableSshBanner ||
+    options.permitRootLogin !== "yes" ||
+    options.disableX11Forwarding ||
+    options.maxAuthTries !== 6
   if (!hasChanges) {
     return {
       name: "SSH Hardening",
@@ -59,7 +64,7 @@ export const runHardenSshConfig: HardeningTask = async (ssh, options, server) =>
 
     await ssh.exec(
       `sed -i 's/^\\(PasswordAuthentication\\)/# Disabled by SecurBuntu: \\1/' '${cloudInitPath}' && ` +
-      `sed -i 's/^\\(PermitRootLogin\\)/# Disabled by SecurBuntu: \\1/' '${cloudInitPath}'`,
+        `sed -i 's/^\\(PermitRootLogin\\)/# Disabled by SecurBuntu: \\1/' '${cloudInitPath}'`,
     )
   }
 

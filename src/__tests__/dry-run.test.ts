@@ -1,4 +1,4 @@
-import { describe, test, expect, mock as bunMock } from "bun:test"
+import { mock as bunMock, describe, expect, test } from "bun:test"
 import { MockSshClient } from "./helpers/mock-ssh.js"
 
 // Mock @clack/prompts (hoisted before imports by Bun)

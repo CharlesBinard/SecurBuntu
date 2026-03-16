@@ -20,7 +20,9 @@ export const runConfigureUnattended: HardeningTask = async (ssh, options) => {
   }
 
   const has50 = await ssh.fileExists("/etc/apt/apt.conf.d/50unattended-upgrades")
-  const warning = has50 ? undefined : "Warning: /etc/apt/apt.conf.d/50unattended-upgrades not found. Security origins may not be configured."
+  const warning = has50
+    ? undefined
+    : "Warning: /etc/apt/apt.conf.d/50unattended-upgrades not found. Security origins may not be configured."
 
   const autoUpgradesConfig = [
     'APT::Periodic::Update-Package-Lists "1";',

@@ -1,7 +1,7 @@
-import { describe, test, expect } from "bun:test"
-import { MockSshClient } from "../helpers/mock-ssh.js"
+import { describe, expect, test } from "bun:test"
 import { runConfigureUfw } from "../../tasks/ufw.js"
 import type { HardeningOptions, ServerInfo } from "../../types.js"
+import { MockSshClient } from "../helpers/mock-ssh.js"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,
@@ -128,7 +128,7 @@ describe("runConfigureUfw", () => {
 
     await runConfigureUfw(ssh, options, defaultServer)
 
-    const ufwCmd = ssh.commands.find(c => c.includes("ufw allow 22/tcp"))
+    const ufwCmd = ssh.commands.find((c) => c.includes("ufw allow 22/tcp"))
     expect(ufwCmd).toBeDefined()
     expect(ufwCmd).toContain("'\\''") // escaped single quote
   })

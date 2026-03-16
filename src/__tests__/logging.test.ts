@@ -1,12 +1,14 @@
-import { describe, test, expect, afterEach } from "bun:test"
-import { unlinkSync, readFileSync, existsSync } from "fs"
-import { MockSshClient } from "./helpers/mock-ssh.js"
+import { afterEach, describe, expect, test } from "bun:test"
+import { existsSync, readFileSync, unlinkSync } from "fs"
 import { LoggingSshClient } from "../logging.js"
+import { MockSshClient } from "./helpers/mock-ssh.js"
 
 const TEST_LOG_PATH = "/tmp/securbuntu-test-log.txt"
 
 afterEach(() => {
-  try { unlinkSync(TEST_LOG_PATH) } catch {}
+  try {
+    unlinkSync(TEST_LOG_PATH)
+  } catch {}
 })
 
 describe("LoggingSshClient", () => {

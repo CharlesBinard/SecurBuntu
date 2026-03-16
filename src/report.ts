@@ -1,7 +1,7 @@
-import pc from "picocolors"
 import { note } from "@clack/prompts"
 import { writeFileSync } from "fs"
-import type { Report, AuditResult } from "./types.js"
+import pc from "picocolors"
+import type { AuditResult, Report } from "./types.js"
 
 export function displayReport(report: Report): void {
   const lines: string[] = []

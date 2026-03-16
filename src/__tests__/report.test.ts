@@ -1,13 +1,15 @@
-import { describe, test, expect, afterEach } from "bun:test"
-import { unlinkSync, readFileSync } from "fs"
-import type { Report, AuditResult } from "../types.js"
-import { exportReportMarkdown, exportAuditMarkdown } from "../report.js"
+import { afterEach, describe, expect, test } from "bun:test"
+import { readFileSync, unlinkSync } from "fs"
+import { exportAuditMarkdown, exportReportMarkdown } from "../report.js"
+import type { AuditResult, Report } from "../types.js"
 
 const cleanupFiles: string[] = []
 
 afterEach(() => {
   for (const f of cleanupFiles) {
-    try { unlinkSync(f) } catch {}
+    try {
+      unlinkSync(f)
+    } catch {}
   }
   cleanupFiles.length = 0
 })
@@ -20,7 +22,12 @@ function makeReport(overrides: Partial<Report> = {}): Report {
     ubuntuVersion: "24.04",
     results: [
       { name: "System Update", success: true, message: "System packages updated" },
-      { name: "UFW Firewall", success: true, message: "UFW installed and configured", details: "Allowed: 22/tcp, 80/tcp" },
+      {
+        name: "UFW Firewall",
+        success: true,
+        message: "UFW installed and configured",
+        details: "Allowed: 22/tcp, 80/tcp",
+      },
     ],
     ...overrides,
   }
@@ -72,9 +79,11 @@ describe("exportReportMarkdown", () => {
   })
 
   test("includes failed task with minus icon", () => {
-    const filename = exportReportMarkdown(makeReport({
-      results: [{ name: "Test", success: false, message: "Failed" }],
-    }))
+    const filename = exportReportMarkdown(
+      makeReport({
+        results: [{ name: "Test", success: false, message: "Failed" }],
+      }),
+    )
     cleanupFiles.push(filename)
     const content = readFileSync(filename, "utf-8")
     expect(content).toContain("### - Test")

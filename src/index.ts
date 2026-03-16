@@ -1,16 +1,31 @@
 #!/usr/bin/env bun
+import { confirm, isCancel, log, outro, password as passwordPrompt, spinner } from "@clack/prompts"
 import { existsSync } from "fs"
-import { outro, log, spinner, confirm, isCancel, password as passwordPrompt } from "@clack/prompts"
 import pc from "picocolors"
-import { showBanner, initVersion } from "./ui.js"
-import { connect, detectServerInfo, fetchHostKeyFingerprint, addToKnownHosts, copyKeyToServer, checkSshCopyIdInstalled } from "./ssh.js"
-import { promptConnection, promptHardeningOptions, promptConfirmation, promptExportReport, promptExportLog, promptExportAudit, promptCopyKeyOnFailure } from "./prompts.js"
-import { executeTasks } from "./tasks/index.js"
-import { displayReport, exportReportMarkdown, exportAuditMarkdown } from "./report.js"
+import { displayAudit, runAudit } from "./audit.js"
 import { DryRunSshClient } from "./dry-run.js"
 import { LoggingSshClient } from "./logging.js"
-import { runAudit, displayAudit } from "./audit.js"
-import type { Report } from "./types.js"
+import {
+  promptConfirmation,
+  promptConnection,
+  promptCopyKeyOnFailure,
+  promptExportAudit,
+  promptExportLog,
+  promptExportReport,
+  promptHardeningOptions,
+} from "./prompts.js"
+import { displayReport, exportAuditMarkdown, exportReportMarkdown } from "./report.js"
+import {
+  addToKnownHosts,
+  checkSshCopyIdInstalled,
+  connect,
+  copyKeyToServer,
+  detectServerInfo,
+  fetchHostKeyFingerprint,
+} from "./ssh.js"
+import { executeTasks } from "./tasks/index.js"
+import type { ConnectionConfig, Report, SshClient } from "./types.js"
+import { initVersion, showBanner } from "./ui.js"
 
 async function main(): Promise<void> {
   await initVersion()
@@ -35,8 +50,8 @@ Options:
 
   // 1. Connection loop — retry until connected
   const s = spinner()
-  let ssh
-  let connectionConfig
+  let ssh: SshClient | undefined
+  let connectionConfig: ConnectionConfig | undefined
 
   while (true) {
     try {
@@ -55,10 +70,7 @@ Options:
     } else if (hostKeyResult.fingerprint) {
       // Stop spinner BEFORE showing interactive prompt
       s.stop("New host detected")
-      log.info(
-        `${pc.bold("Host key fingerprint:")}\n` +
-        `  ${pc.cyan(hostKeyResult.fingerprint)}`
-      )
+      log.info(`${pc.bold("Host key fingerprint:")}\n` + `  ${pc.cyan(hostKeyResult.fingerprint)}`)
 
       const trust = await confirm({
         message: "Do you trust this host?",
@@ -77,7 +89,7 @@ Options:
 
     // Entry Point 1: Handle "copy" auth method — copy key before attempting connection
     if (connectionConfig.authMethod === "copy" && connectionConfig.privateKeyPath) {
-      const pubKeyPath = connectionConfig.privateKeyPath + ".pub"
+      const pubKeyPath = `${connectionConfig.privateKeyPath}.pub`
       log.info(pc.dim("Copying your SSH key to the server. You will be prompted for the password."))
 
       const result = await copyKeyToServer(
@@ -93,9 +105,9 @@ Options:
       } else if (result.passwordAuthDisabled) {
         log.error(
           `${pc.red("The server does not accept password authentication.")}\n` +
-          `  ${pc.dim("Password auth is disabled on this server, so ssh-copy-id cannot connect.")}\n` +
-          `  ${pc.dim("To add your key, use the server console or cloud provider dashboard to add")}\n` +
-          `  ${pc.dim("your public key to /root/.ssh/authorized_keys manually.")}`
+            `  ${pc.dim("Password auth is disabled on this server, so ssh-copy-id cannot connect.")}\n` +
+            `  ${pc.dim("To add your key, use the server console or cloud provider dashboard to add")}\n` +
+            `  ${pc.dim("your public key to /root/.ssh/authorized_keys manually.")}`,
         )
         log.info(pc.cyan("Let's try again.\n"))
         continue
@@ -120,7 +132,7 @@ Options:
         s.stop(pc.yellow("Sudo password required"))
         log.warning(
           `${pc.bold("User does not have passwordless sudo.")}\n` +
-          `  ${pc.dim("For better security, consider configuring NOPASSWD sudo for this user.")}`
+            `  ${pc.dim("For better security, consider configuring NOPASSWD sudo for this user.")}`,
         )
 
         const sudoPw = await passwordPrompt({
@@ -160,7 +172,7 @@ Options:
       ) {
         const wantCopy = await promptCopyKeyOnFailure()
         if (wantCopy) {
-          const pubKeyPath = connectionConfig.privateKeyPath + ".pub"
+          const pubKeyPath = `${connectionConfig.privateKeyPath}.pub`
 
           if (!existsSync(pubKeyPath)) {
             log.error(pc.red(`Public key not found at ${pubKeyPath}`))
@@ -172,9 +184,9 @@ Options:
           if (!hasSshCopyId) {
             log.error(
               `${pc.red("ssh-copy-id is required but is not installed.")}\n` +
-              `  ${pc.dim("Install it with:")}\n` +
-              `  ${pc.cyan("  Ubuntu/Debian: sudo apt install openssh-client")}\n` +
-              `  ${pc.cyan("  macOS:         brew install ssh-copy-id")}`
+                `  ${pc.dim("Install it with:")}\n` +
+                `  ${pc.cyan("  Ubuntu/Debian: sudo apt install openssh-client")}\n` +
+                `  ${pc.cyan("  macOS:         brew install ssh-copy-id")}`,
             )
             log.info(pc.cyan("Let's try again.\n"))
             continue
@@ -194,9 +206,9 @@ Options:
           } else if (copyResult.passwordAuthDisabled) {
             log.error(
               `${pc.red("The server does not accept password authentication.")}\n` +
-              `  ${pc.dim("Password auth is disabled on this server, so ssh-copy-id cannot connect.")}\n` +
-              `  ${pc.dim("To add your key, use the server console or cloud provider dashboard to add")}\n` +
-              `  ${pc.dim("your public key to /root/.ssh/authorized_keys manually.")}`
+                `  ${pc.dim("Password auth is disabled on this server, so ssh-copy-id cannot connect.")}\n` +
+                `  ${pc.dim("To add your key, use the server console or cloud provider dashboard to add")}\n` +
+                `  ${pc.dim("your public key to /root/.ssh/authorized_keys manually.")}`,
             )
           } else {
             log.error(pc.red("Failed to copy SSH key. Check the password and try again."))
@@ -205,10 +217,10 @@ Options:
       } else {
         log.warning(
           `${pc.bold("Troubleshooting:")}\n` +
-          `  ${pc.dim("- Verify the IP address and port")}\n` +
-          `  ${pc.dim("- Check that SSH is running on the server")}\n` +
-          `  ${pc.dim("- Verify your credentials (key path or password)")}\n` +
-          `  ${pc.dim("- Check network connectivity")}`,
+            `  ${pc.dim("- Verify the IP address and port")}\n` +
+            `  ${pc.dim("- Check that SSH is running on the server")}\n` +
+            `  ${pc.dim("- Verify your credentials (key path or password)")}\n` +
+            `  ${pc.dim("- Check network connectivity")}`,
         )
       }
 
@@ -273,7 +285,7 @@ Options:
     // 6. Confirmation (3-way: apply / simulate / cancel)
     const confirmation = await promptConfirmation(connectionConfig.host, options)
     if (!confirmation) {
-      outro(pc.dim("Aborted. No changes were made" + (isDryRun ? "." : " (except system update).")))
+      outro(pc.dim(`Aborted. No changes were made${isDryRun ? "." : " (except system update)."}`))
       ssh.close()
       return
     }
@@ -335,7 +347,7 @@ Options:
 
     // Log file handling
     if (loggingSsh.hasEntries()) {
-      const shouldSaveLog = wantLog || await promptExportLog()
+      const shouldSaveLog = wantLog || (await promptExportLog())
       if (shouldSaveLog) {
         const sanitizedIp = connectionConfig.host.replace(/:/g, "-")
         const date = new Date().toISOString().split("T")[0] ?? "unknown"

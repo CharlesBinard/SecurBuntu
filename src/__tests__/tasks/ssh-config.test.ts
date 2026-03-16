@@ -1,7 +1,7 @@
-import { describe, test, expect } from "bun:test"
-import { MockSshClient } from "../helpers/mock-ssh.js"
+import { describe, expect, test } from "bun:test"
 import { runHardenSshConfig } from "../../tasks/ssh-config.js"
 import type { HardeningOptions, ServerInfo } from "../../types.js"
+import { MockSshClient } from "../helpers/mock-ssh.js"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,
@@ -101,7 +101,7 @@ describe("runHardenSshConfig", () => {
       disablePasswordAuth: true,
     }
 
-    const result = await runHardenSshConfig(ssh, options, defaultServer)
+    const _result = await runHardenSshConfig(ssh, options, defaultServer)
 
     const config = ssh.writtenFiles.get("/etc/ssh/sshd_config.d/01-securbuntu.conf")
     expect(config).toContain("PasswordAuthentication no")
@@ -233,7 +233,13 @@ describe("runHardenSshConfig", () => {
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("echo ok", { stdout: "ok" })
 
-    const options = { ...defaultOptions, changeSshPort: true, newSshPort: 22, disableX11Forwarding: true, maxAuthTries: 5 }
+    const options = {
+      ...defaultOptions,
+      changeSshPort: true,
+      newSshPort: 22,
+      disableX11Forwarding: true,
+      maxAuthTries: 5,
+    }
 
     await runHardenSshConfig(ssh, options, defaultServer)
 

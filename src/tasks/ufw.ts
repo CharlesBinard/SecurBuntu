@@ -37,7 +37,9 @@ export const runConfigureUfw: HardeningTask = async (ssh, options) => {
         addedRules.push(`${rule.port}/tcp+udp`)
       }
     } else {
-      const ruleResult = await ssh.exec(`ufw allow ${rule.port}/${rule.protocol} comment '${escapeShellQuote(rule.comment)}'`)
+      const ruleResult = await ssh.exec(
+        `ufw allow ${rule.port}/${rule.protocol} comment '${escapeShellQuote(rule.comment)}'`,
+      )
       if (ruleResult.exitCode !== 0) {
         failedRules.push(`${rule.port}/${rule.protocol}`)
       } else {
@@ -56,9 +58,10 @@ export const runConfigureUfw: HardeningTask = async (ssh, options) => {
     }
   }
 
-  const details = failedRules.length > 0
-    ? `Allowed: ${addedRules.join(", ")}. Failed: ${failedRules.join(", ")}`
-    : `Allowed ports: ${addedRules.join(", ")}`
+  const details =
+    failedRules.length > 0
+      ? `Allowed: ${addedRules.join(", ")}. Failed: ${failedRules.join(", ")}`
+      : `Allowed ports: ${addedRules.join(", ")}`
 
   return {
     name: "UFW Firewall",

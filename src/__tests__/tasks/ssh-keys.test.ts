@@ -1,6 +1,6 @@
-import { describe, test, expect, mock as bunMock } from "bun:test"
-import { MockSshClient } from "../helpers/mock-ssh.js"
+import { mock as bunMock, describe, expect, test } from "bun:test"
 import type { HardeningOptions, ServerInfo } from "../../types.js"
+import { MockSshClient } from "../helpers/mock-ssh.js"
 
 // Mock fs.readFileSync for the public key
 bunMock.module("fs", () => ({

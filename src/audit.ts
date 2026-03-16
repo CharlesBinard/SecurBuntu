@@ -1,6 +1,6 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import type { SshClient, AuditCheck, AuditResult } from "./types.js"
+import type { AuditCheck, AuditResult, SshClient } from "./types.js"
 
 export async function runAudit(ssh: SshClient): Promise<AuditResult> {
   const checks: AuditCheck[] = []
@@ -27,15 +27,11 @@ export async function runAudit(ssh: SshClient): Promise<AuditResult> {
   checks.push({ name: "Password Auth", status: pwAuth })
 
   // UFW
-  const ufwResult = await ssh.exec(
-    "which ufw > /dev/null 2>&1 && ufw status | head -1 || echo 'not installed'",
-  )
+  const ufwResult = await ssh.exec("which ufw > /dev/null 2>&1 && ufw status | head -1 || echo 'not installed'")
   checks.push({ name: "UFW Firewall", status: ufwResult.stdout.replace("Status: ", "").trim() })
 
   // Fail2ban
-  const f2bResult = await ssh.exec(
-    "systemctl is-active fail2ban 2>/dev/null || echo 'not installed'",
-  )
+  const f2bResult = await ssh.exec("systemctl is-active fail2ban 2>/dev/null || echo 'not installed'")
   checks.push({ name: "Fail2ban", status: f2bResult.stdout.trim() })
 
   // Auto-updates
@@ -45,23 +41,19 @@ export async function runAudit(ssh: SshClient): Promise<AuditResult> {
   checks.push({ name: "Auto-updates", status: autoResult.stdout.trim() })
 
   // Sudo users
-  const sudoResult = await ssh.exec(
-    "grep -Po '^sudo:.*:\\K.*' /etc/group 2>/dev/null || echo 'none'",
-  )
+  const sudoResult = await ssh.exec("grep -Po '^sudo:.*:\\K.*' /etc/group 2>/dev/null || echo 'none'")
   checks.push({ name: "Sudo Users", status: sudoResult.stdout.trim() || "none" })
 
   // SSH keys
   const keysResult = await ssh.exec(
     "for f in /home/*/.ssh/authorized_keys /root/.ssh/authorized_keys; do " +
-    "test -f \"$f\" && echo \"$(grep -c 'ssh-' \"$f\" 2>/dev/null || echo 0) key(s) in $f\"; " +
-    "done 2>/dev/null || echo 'none found'",
+      'test -f "$f" && echo "$(grep -c \'ssh-\' "$f" 2>/dev/null || echo 0) key(s) in $f"; ' +
+      "done 2>/dev/null || echo 'none found'",
   )
   checks.push({ name: "SSH Keys", status: keysResult.stdout.trim() || "none found" })
 
   // Sysctl hardening
-  const sysctlResult = await ssh.exec(
-    "test -f /etc/sysctl.d/99-securbuntu.conf && echo hardened || echo default",
-  )
+  const sysctlResult = await ssh.exec("test -f /etc/sysctl.d/99-securbuntu.conf && echo hardened || echo default")
   checks.push({ name: "Sysctl Hardening", status: sysctlResult.stdout.trim() })
 
   // SSH banner
@@ -74,18 +66,23 @@ export async function runAudit(ssh: SshClient): Promise<AuditResult> {
 }
 
 export function displayAudit(result: AuditResult): void {
-  const lines = result.checks.map(check => {
+  const lines = result.checks.map((check) => {
     const status = check.status
-    const isGood = status.includes("active") || status.includes("enabled") ||
-      status.includes("hardened") || status === "no" || status === "prohibit-password"
-    const isBad = status.includes("not installed") || status.includes("not configured") ||
-      status === "yes" || status === "yes (default)" || status === "default" || status === "not set"
+    const isGood =
+      status.includes("active") ||
+      status.includes("enabled") ||
+      status.includes("hardened") ||
+      status === "no" ||
+      status === "prohibit-password"
+    const isBad =
+      status.includes("not installed") ||
+      status.includes("not configured") ||
+      status === "yes" ||
+      status === "yes (default)" ||
+      status === "default" ||
+      status === "not set"
 
-    const colored = isGood
-      ? pc.green(status)
-      : isBad
-        ? pc.yellow(status)
-        : pc.cyan(status)
+    const colored = isGood ? pc.green(status) : isBad ? pc.yellow(status) : pc.cyan(status)
 
     return `  ${pc.bold(check.name)}: ${colored}${check.detail ? ` ${pc.dim(check.detail)}` : ""}`
   })
