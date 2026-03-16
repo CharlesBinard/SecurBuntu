@@ -16,14 +16,18 @@ export function displayAudit(result: AuditResult): void {
       status.includes("enabled") ||
       status.includes("hardened") ||
       status === "no" ||
-      status === "prohibit-password"
+      status === "prohibit-password" ||
+      status === "none detected" ||
+      status === "all correct"
     const isBad =
       status.includes("not installed") ||
       status.includes("not configured") ||
       status === "yes" ||
       status === "yes (default)" ||
       status === "default" ||
-      status === "not set"
+      status === "not set" ||
+      status === "found" ||
+      status === "non-conforming"
 
     const colored = colorizeStatus(status, isGood, isBad)
 
