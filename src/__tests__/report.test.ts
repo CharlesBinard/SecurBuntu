@@ -242,8 +242,8 @@ describe("displayReport", () => {
   test("basic report shows server metadata and results", () => {
     displayReport(makeReport())
     expect(noteCalls).toHaveLength(1)
-    const msg = noteCalls[0].message
-    expect(noteCalls[0].title).toBe("SecurBuntu Report")
+    const msg = noteCalls[0]!.message
+    expect(noteCalls[0]!.title).toBe("SecurBuntu Report")
     expect(msg).toContain("192.168.1.100")
     expect(msg).toContain("root")
     expect(msg).toContain("24.04")
@@ -255,27 +255,27 @@ describe("displayReport", () => {
 
   test("report with sudoUser includes new sudo user line", () => {
     displayReport(makeReport({ sudoUser: "deploy" }))
-    const msg = noteCalls[0].message
+    const msg = noteCalls[0]!.message
     expect(msg).toContain("deploy")
     expect(msg).toContain("New sudo user")
   })
 
   test("report with details includes detail lines", () => {
     displayReport(makeReport())
-    const msg = noteCalls[0].message
+    const msg = noteCalls[0]!.message
     expect(msg).toContain("Allowed: 22/tcp, 80/tcp")
   })
 
   test("report with newSshPort shows SSH warning", () => {
     displayReport(makeReport({ newSshPort: 2222 }))
-    const msg = noteCalls[0].message
+    const msg = noteCalls[0]!.message
     expect(msg).toContain("SSH port changed to 2222")
     expect(msg).toContain("ssh -p 2222 root@192.168.1.100")
   })
 
   test("newSshPort uses sudoUser when available", () => {
     displayReport(makeReport({ newSshPort: 2222, sudoUser: "deploy" }))
-    const msg = noteCalls[0].message
+    const msg = noteCalls[0]!.message
     expect(msg).toContain("ssh -p 2222 deploy@192.168.1.100")
   })
 
@@ -287,7 +287,7 @@ describe("displayReport", () => {
       ],
     }
     displayReport(makeReport({ audit }))
-    const msg = noteCalls[0].message
+    const msg = noteCalls[0]!.message
     expect(msg).toContain("Audit (pre-hardening):")
     expect(msg).toContain("SSH Port")
     expect(msg).toContain("22 (default)")
@@ -309,7 +309,7 @@ describe("displayReport", () => {
       ],
     }
     displayReport(makeReport({ audit, postAudit }))
-    const msg = noteCalls[0].message
+    const msg = noteCalls[0]!.message
     expect(msg).toContain("Before / After:")
     expect(msg).toContain("SSH Port")
     expect(msg).toContain("22 (default)")
@@ -330,7 +330,7 @@ describe("displayReport", () => {
       checks: [{ name: "SSH Port", status: "2222" }],
     }
     displayReport(makeReport({ audit, postAudit }))
-    const msg = noteCalls[0].message
+    const msg = noteCalls[0]!.message
     // The second check should use the "—" fallback for missing postAudit entry
     expect(msg).toContain("—")
   })
@@ -341,7 +341,7 @@ describe("displayReport", () => {
         results: [{ name: "Fail2ban", success: false, message: "Install failed" }],
       }),
     )
-    const msg = noteCalls[0].message
+    const msg = noteCalls[0]!.message
     expect(msg).toContain("Fail2ban")
     expect(msg).toContain("Install failed")
   })
