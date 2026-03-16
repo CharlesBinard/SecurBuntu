@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 import { existsSync } from "fs"
-import { outro, log, spinner, confirm, isCancel } from "@clack/prompts"
+import { outro, log, spinner, confirm, isCancel, password as promptPassword } from "@clack/prompts"
 import pc from "picocolors"
 import { showBanner, initVersion } from "./ui.js"
-import { connect, detectServerInfo, fetchHostKeyFingerprint, addToKnownHosts, copyKeyToServer, checkSshCopyIdInstalled } from "./ssh.js"
+import { connect, detectServerInfo, fetchHostKeyFingerprint, addToKnownHosts, copyKeyToServer, checkSshpassInstalled } from "./ssh.js"
 import { promptConnection, promptHardeningOptions, promptConfirmation, promptExportReport, promptExportLog, promptExportAudit, promptCopyKeyOnFailure } from "./prompts.js"
 import { executeTasks } from "./tasks/index.js"
 import { displayReport, exportReportMarkdown, exportAuditMarkdown } from "./report.js"
@@ -62,7 +62,7 @@ async function main(): Promise<void> {
     }
 
     // Entry Point 1: Handle "copy" auth method — copy key before attempting connection
-    if (connectionConfig.authMethod === "copy" && connectionConfig.privateKeyPath) {
+    if (connectionConfig.authMethod === "copy" && connectionConfig.privateKeyPath && connectionConfig.password) {
       const pubKeyPath = connectionConfig.privateKeyPath + ".pub"
       log.info(pc.dim("Copying your SSH key to the server..."))
 
@@ -70,6 +70,7 @@ async function main(): Promise<void> {
         connectionConfig.host,
         connectionConfig.username,
         pubKeyPath,
+        connectionConfig.password,
         connectionConfig.port,
       )
 
@@ -109,14 +110,25 @@ async function main(): Promise<void> {
             continue
           }
 
-          const hasSshCopyId = await checkSshCopyIdInstalled()
-          if (!hasSshCopyId) {
+          const hasSshpass = await checkSshpassInstalled()
+          if (!hasSshpass) {
             log.error(
-              `${pc.red("ssh-copy-id is required but is not installed.")}\n` +
+              `${pc.red("sshpass is required to copy your SSH key but is not installed.")}\n` +
               `  ${pc.dim("Install it with:")}\n` +
-              `  ${pc.cyan("  Ubuntu/Debian: sudo apt install openssh-client")}\n` +
-              `  ${pc.cyan("  macOS:         brew install ssh-copy-id")}`
+              `  ${pc.cyan("  Ubuntu/Debian: sudo apt install sshpass")}\n` +
+              `  ${pc.cyan("  macOS:         brew install sshpass")}`
             )
+            log.info(pc.cyan("Let's try again.\n"))
+            continue
+          }
+
+          const pw = await promptPassword({
+            message: "Enter the server password (for key copy only)",
+            validate(value) {
+              if (!value) return "Password is required"
+            },
+          })
+          if (isCancel(pw)) {
             log.info(pc.cyan("Let's try again.\n"))
             continue
           }
@@ -126,6 +138,7 @@ async function main(): Promise<void> {
             connectionConfig.host,
             connectionConfig.username,
             pubKeyPath,
+            pw,
             connectionConfig.port,
           )
 
