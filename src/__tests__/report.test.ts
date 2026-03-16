@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { readFileSync, unlinkSync } from "fs"
-import { exportAuditMarkdown, exportReportMarkdown } from "../report.js"
+import { exportAuditMarkdown, exportReportMarkdown } from "../report/index.js"
 import type { AuditResult, Report } from "../types.js"
 
 const cleanupFiles: string[] = []

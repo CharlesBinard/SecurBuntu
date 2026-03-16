@@ -15,7 +15,7 @@ bunMock.module("@clack/prompts", () => ({
   },
 }))
 
-import { runAudit } from "../audit.js"
+import { runAudit } from "../audit/index.js"
 
 describe("runAudit", () => {
   test("returns exactly 10 checks", async () => {

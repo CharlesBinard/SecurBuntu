@@ -72,7 +72,7 @@
 
       "performance": {
         "noDelete": "warn",
-        "noBarrelFile": "warn",
+        "noBarrelFile": "off",
         "noReExportAll": "warn"
       },
 

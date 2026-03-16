@@ -1,15 +1,7 @@
-import * as p from "@clack/prompts"
-import pc from "picocolors"
-import type { AuditCheck, AuditResult, SshClient } from "./types.js"
-
-function colorizeStatus(status: string, isGood: boolean, isBad: boolean): string {
-  if (isGood) return pc.green(status)
-  if (isBad) return pc.yellow(status)
-  return pc.cyan(status)
-}
+import type { AuditResult, SshClient } from "../types.js"
 
 export async function runAudit(ssh: SshClient): Promise<AuditResult> {
-  const checks: AuditCheck[] = []
+  const checks: AuditResult["checks"] = []
 
   // SSH Port
   const portResult = await ssh.exec(
@@ -69,29 +61,4 @@ export async function runAudit(ssh: SshClient): Promise<AuditResult> {
   checks.push({ name: "SSH Banner", status: bannerResult.stdout.trim() || "not set" })
 
   return { checks }
-}
-
-export function displayAudit(result: AuditResult): void {
-  const lines = result.checks.map((check) => {
-    const status = check.status
-    const isGood =
-      status.includes("active") ||
-      status.includes("enabled") ||
-      status.includes("hardened") ||
-      status === "no" ||
-      status === "prohibit-password"
-    const isBad =
-      status.includes("not installed") ||
-      status.includes("not configured") ||
-      status === "yes" ||
-      status === "yes (default)" ||
-      status === "default" ||
-      status === "not set"
-
-    const colored = colorizeStatus(status, isGood, isBad)
-
-    return `  ${pc.bold(check.name)}: ${colored}${check.detail ? ` ${pc.dim(check.detail)}` : ""}`
-  })
-
-  p.note(lines.join("\n"), "Server Security Audit")
 }
