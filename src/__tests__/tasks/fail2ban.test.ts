@@ -94,7 +94,7 @@ describe("runConfigureFail2ban", () => {
     const options = {
       ...defaultOptions,
       installFail2ban: true,
-      currentSshPort: 22012,
+      currentSshPort: 22_012,
     }
 
     await runConfigureFail2ban(ssh, options, makeServer("24.04"))

@@ -65,7 +65,7 @@ describe("runHardenSshConfig", () => {
 
     const options = {
       ...defaultOptions,
-      currentSshPort: 22012,
+      currentSshPort: 22_012,
       permitRootLogin: "prohibit-password" as const,
     }
 

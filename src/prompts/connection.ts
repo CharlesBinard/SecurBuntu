@@ -1,7 +1,12 @@
 import * as p from "@clack/prompts"
 import { existsSync } from "fs"
 import pc from "picocolors"
-import { checkSshCopyIdInstalled, checkSshpassInstalled, detectAllLocalKeys, detectDefaultKeyPath } from "../ssh/index.ts"
+import {
+  checkSshCopyIdInstalled,
+  checkSshpassInstalled,
+  detectAllLocalKeys,
+  detectDefaultKeyPath,
+} from "../ssh/index.ts"
 import type { ConnectionConfig } from "../types.ts"
 import { handleCancel, isCancel, unwrapText } from "./helpers.ts"
 

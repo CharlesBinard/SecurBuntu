@@ -14,7 +14,15 @@ import {
 import { displayReport, exportAuditMarkdown, exportReportMarkdown } from "./report/index.ts"
 import { detectServerInfo } from "./ssh/index.ts"
 import { executeTasks } from "./tasks/index.ts"
-import type { AuditResult, ConnectionConfig, HardeningOptions, Report, ServerAuditContext, ServerInfo, SshClient } from "./types.ts"
+import type {
+  AuditResult,
+  ConnectionConfig,
+  HardeningOptions,
+  Report,
+  ServerAuditContext,
+  ServerInfo,
+  SshClient,
+} from "./types.ts"
 
 interface RunArgs {
   isDryRun: boolean
