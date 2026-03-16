@@ -13,6 +13,11 @@ function yesNo(value: boolean): string {
   return value ? pc.green("Yes") : pc.dim("No")
 }
 
+function formatServicesSummary(options: HardeningOptions): string {
+  if (!options.disableServices || options.servicesToDisable.length === 0) return pc.dim("No")
+  return `${pc.green("Yes")} (${pc.cyan(options.servicesToDisable.join(", "))})`
+}
+
 function buildSummaryLines(options: HardeningOptions): string[] {
   const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
   const lines: string[] = []
@@ -30,6 +35,8 @@ function buildSummaryLines(options: HardeningOptions): string[] {
   lines.push(`  Fail2ban: ${yesNo(options.installFail2ban)}`)
   lines.push(`  Auto-updates: ${yesNo(options.enableAutoUpdates)}`)
   lines.push(`  Kernel hardening: ${formatSysctlSummary(options)}`)
+  lines.push(`  Disable services: ${formatServicesSummary(options)}`)
+  lines.push(`  Fix file permissions: ${yesNo(options.fixFilePermissions)}`)
 
   return lines
 }

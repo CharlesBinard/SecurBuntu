@@ -37,6 +37,9 @@ export interface HardeningOptions {
   enableSysctl: boolean
   sysctlOptions?: SysctlOptions
   enableSshBanner: boolean
+  disableServices: boolean
+  servicesToDisable: string[]
+  fixFilePermissions: boolean
 }
 
 export interface UfwPort {

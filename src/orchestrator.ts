@@ -189,7 +189,10 @@ export async function run(args: RunArgs): Promise<void> {
 
     const { updateSuccess, updateMessage } = await runSystemUpdate(ssh, isDryRun, s)
 
-    const options = await promptHardeningOptions(serverInfo, ssh)
+    const servicesCheck = auditResult.checks.find((c) => c.name === "Unnecessary Services")
+    const detectedServices = servicesCheck?.detail?.split(", ") ?? []
+
+    const options = await promptHardeningOptions(serverInfo, ssh, detectedServices)
 
     const confirmation = await promptConfirmation(connectionConfig.host, options)
     if (!confirmation) {

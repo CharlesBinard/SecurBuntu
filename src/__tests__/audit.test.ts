@@ -24,7 +24,7 @@ describe("runAudit", () => {
   test("returns exactly 10 checks", async () => {
     const ssh = new MockSshClient()
     const result = await runAudit(ssh)
-    expect(result.checks).toHaveLength(10)
+    expect(result.checks).toHaveLength(12)
   })
 
   test("check names match expected list", async () => {
@@ -42,6 +42,8 @@ describe("runAudit", () => {
       "SSH Keys",
       "Sysctl Hardening",
       "SSH Banner",
+      "Unnecessary Services",
+      "File Permissions",
     ])
   })
 
@@ -113,6 +115,58 @@ describe("runAudit", () => {
     const result = await runAudit(ssh)
     const check = result.checks.find((c) => c.name === "SSH Banner")
     expect(check?.status).toBe("Banner /etc/issue.net")
+  })
+
+  test("detects unnecessary services", async () => {
+    const ssh = new MockSshClient()
+    ssh.onExec("systemctl list-units --type=service --state=active", {
+      stdout:
+        "cups.service loaded active running CUPS Scheduler\navahi-daemon.service loaded active running Avahi mDNS",
+    })
+    const result = await runAudit(ssh)
+    const check = result.checks.find((c) => c.name === "Unnecessary Services")
+    expect(check?.status).toBe("found")
+    expect(check?.detail).toContain("cups")
+    expect(check?.detail).toContain("avahi-daemon")
+  })
+
+  test("reports no unnecessary services when clean", async () => {
+    const ssh = new MockSshClient()
+    ssh.onExec("systemctl list-units --type=service --state=active", {
+      stdout: "ssh.service loaded active running OpenBSD Secure Shell server",
+    })
+    const result = await runAudit(ssh)
+    const check = result.checks.find((c) => c.name === "Unnecessary Services")
+    expect(check?.status).toBe("none detected")
+  })
+
+  test("reports all correct file permissions", async () => {
+    const ssh = new MockSshClient()
+    ssh.onExec("ls /etc/ssh/ssh_host_*_key", { exitCode: 1 })
+    ssh.onExec("stat -c '%a %U %G' '/etc/passwd'", { stdout: "644 root root" })
+    ssh.onExec("stat -c '%a %U %G' '/etc/shadow'", { stdout: "640 root shadow" })
+    ssh.onExec("stat -c '%a %U %G' '/etc/gshadow'", { stdout: "640 root shadow" })
+    ssh.onExec("stat -c '%a %U %G' '/etc/group'", { stdout: "644 root root" })
+    ssh.onExec("stat -c '%a %U %G' '/etc/ssh/sshd_config'", { stdout: "600 root root" })
+    ssh.onExec("stat -c '%a %U %G' '/etc/crontab'", { stdout: "600 root root" })
+    const result = await runAudit(ssh)
+    const check = result.checks.find((c) => c.name === "File Permissions")
+    expect(check?.status).toBe("all correct")
+  })
+
+  test("reports non-conforming file permissions", async () => {
+    const ssh = new MockSshClient()
+    ssh.onExec("ls /etc/ssh/ssh_host_*_key", { exitCode: 1 })
+    ssh.onExec("stat -c '%a %U %G' '/etc/passwd'", { stdout: "644 root root" })
+    ssh.onExec("stat -c '%a %U %G' '/etc/shadow'", { stdout: "644 root root" }) // wrong
+    ssh.onExec("stat -c '%a %U %G' '/etc/gshadow'", { stdout: "640 root shadow" })
+    ssh.onExec("stat -c '%a %U %G' '/etc/group'", { stdout: "644 root root" })
+    ssh.onExec("stat -c '%a %U %G' '/etc/ssh/sshd_config'", { stdout: "600 root root" })
+    ssh.onExec("stat -c '%a %U %G' '/etc/crontab'", { stdout: "600 root root" })
+    const result = await runAudit(ssh)
+    const check = result.checks.find((c) => c.name === "File Permissions")
+    expect(check?.status).toBe("non-conforming")
+    expect(check?.detail).toContain("/etc/shadow 644 (expected 640)")
   })
 })
 
@@ -244,6 +298,40 @@ describe("displayAudit", () => {
     const message = noteCalls[0]?.message
     expect(message).toContain("Firewall")
     expect(message).toContain("active")
+  })
+
+  test("colorizes 'none detected' status as green (good)", () => {
+    const result: AuditResult = {
+      checks: [{ name: "Unnecessary Services", status: "none detected" }],
+    }
+    displayAudit(result)
+    expect(noteCalls[0]?.message).toContain("none detected")
+  })
+
+  test("colorizes 'all correct' status as green (good)", () => {
+    const result: AuditResult = {
+      checks: [{ name: "File Permissions", status: "all correct" }],
+    }
+    displayAudit(result)
+    expect(noteCalls[0]?.message).toContain("all correct")
+  })
+
+  test("colorizes 'found' status as yellow (bad)", () => {
+    const result: AuditResult = {
+      checks: [{ name: "Unnecessary Services", status: "found", detail: "cups, avahi-daemon" }],
+    }
+    displayAudit(result)
+    expect(noteCalls[0]?.message).toContain("found")
+    expect(noteCalls[0]?.message).toContain("cups, avahi-daemon")
+  })
+
+  test("colorizes 'non-conforming' status as yellow (bad)", () => {
+    const result: AuditResult = {
+      checks: [{ name: "File Permissions", status: "non-conforming", detail: "/etc/shadow" }],
+    }
+    displayAudit(result)
+    expect(noteCalls[0]?.message).toContain("non-conforming")
+    expect(noteCalls[0]?.message).toContain("/etc/shadow")
   })
 
   test("renders multiple checks as newline-separated lines", () => {
