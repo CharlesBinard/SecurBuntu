@@ -1,12 +1,12 @@
 import * as p from "@clack/prompts"
 import { existsSync, readFileSync } from "fs"
 import pc from "picocolors"
-import { detectDefaultPubKeyPath } from "../ssh/index.js"
-import type { HardeningOptions, ServerInfo, SshClient } from "../types.js"
-import { unwrapBoolean, unwrapText } from "./helpers.js"
-import { promptSshOptions } from "./ssh-options.js"
-import { promptSysctlOptions } from "./sysctl.js"
-import { promptUfwOptions } from "./ufw.js"
+import { detectDefaultPubKeyPath } from "../ssh/index.ts"
+import type { HardeningOptions, ServerInfo, SshClient } from "../types.ts"
+import { unwrapBoolean, unwrapText } from "./helpers.ts"
+import { promptSshOptions } from "./ssh-options.ts"
+import { promptSysctlOptions } from "./sysctl.ts"
+import { promptUfwOptions } from "./ufw.ts"
 
 async function promptSudoUser(server: ServerInfo, options: HardeningOptions): Promise<void> {
   if (!server.isRoot) return
@@ -29,6 +29,7 @@ async function promptSudoUser(server: ServerInfo, options: HardeningOptions): Pr
       validate(value) {
         if (!value?.trim()) return "Username is required"
         if (!/^[a-z_][a-z0-9_-]*$/.test(value)) return "Invalid username format"
+        return undefined
       },
     }),
   )
@@ -39,6 +40,7 @@ async function promptSudoUser(server: ServerInfo, options: HardeningOptions): Pr
       message: `Enter password for ${sudoUsername}`,
       validate(value) {
         if (!value || value.length < 8) return "Password must be at least 8 characters"
+        return undefined
       },
     }),
   )
@@ -68,6 +70,7 @@ async function promptPersonalKey(options: HardeningOptions): Promise<boolean> {
         if (!existsSync(resolved)) return `File not found: ${resolved}`
         const content = readFileSync(resolved, "utf-8").trim()
         if (!content.startsWith("ssh-")) return "Invalid public key format (must start with ssh-)"
+        return undefined
       },
     }),
   )

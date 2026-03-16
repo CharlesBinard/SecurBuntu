@@ -1,5 +1,5 @@
 import { readFileSync } from "fs"
-import type { HardeningTask, SshClient } from "../types.js"
+import type { HardeningTask, SshClient } from "../types.ts"
 
 export const runInjectSshKeys: HardeningTask = async (ssh, options) => {
   if (!(options.addPersonalKey && options.personalKeyPath)) {

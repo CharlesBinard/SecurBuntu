@@ -1,4 +1,4 @@
-import type { CommandResult, ExecOptions, SshClient } from "../../types.js"
+import type { CommandResult, ExecOptions, SshClient } from "../../types.ts"
 
 interface MockExecResponse {
   stdout?: string

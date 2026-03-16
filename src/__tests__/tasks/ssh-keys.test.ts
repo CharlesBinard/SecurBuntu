@@ -1,6 +1,6 @@
 import { mock as bunMock, describe, expect, test } from "bun:test"
-import type { HardeningOptions, ServerInfo } from "../../types.js"
-import { MockSshClient } from "../helpers/mock-ssh.js"
+import type { HardeningOptions, ServerInfo } from "../../types.ts"
+import { MockSshClient } from "../helpers/mock-ssh.ts"
 
 // Mock fs.readFileSync for the public key
 bunMock.module("fs", () => ({
@@ -20,7 +20,7 @@ bunMock.module("fs", () => ({
   },
 }))
 
-import { runInjectSshKeys } from "../../tasks/ssh-keys.js"
+import { runInjectSshKeys } from "../../tasks/ssh-keys.ts"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,

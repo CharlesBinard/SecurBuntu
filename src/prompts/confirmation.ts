@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import type { HardeningOptions } from "../types.js"
-import { handleCancel, isCancel, unwrapBoolean } from "./helpers.js"
+import type { HardeningOptions } from "../types.ts"
+import { handleCancel, isCancel, unwrapBoolean } from "./helpers.ts"
 
 function formatRootLogin(policy: "no" | "prohibit-password" | "yes"): string {
   if (policy === "no") return pc.green("disabled")

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { existsSync, readFileSync, unlinkSync } from "fs"
-import { LoggingSshClient } from "../logging.js"
-import { MockSshClient } from "./helpers/mock-ssh.js"
+import { LoggingSshClient } from "../logging.ts"
+import { MockSshClient } from "./helpers/mock-ssh.ts"
 
 const TEST_LOG_PATH = "/tmp/securbuntu-test-log.txt"
 

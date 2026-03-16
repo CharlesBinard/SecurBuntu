@@ -1,4 +1,4 @@
-import type { HardeningOptions, HardeningTask, SshClient, TaskResult } from "../types.js"
+import type { HardeningOptions, HardeningTask, SshClient, TaskResult } from "../types.ts"
 
 function buildSshConfig(options: HardeningOptions, sshPort: number, date: string): string {
   const permitRootLogin = options.permitRootLogin

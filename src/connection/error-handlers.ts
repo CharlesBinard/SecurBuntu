@@ -2,9 +2,9 @@ import type { spinner } from "@clack/prompts"
 import { isCancel, log, password as passwordPrompt } from "@clack/prompts"
 import { existsSync } from "fs"
 import pc from "picocolors"
-import { promptCopyKeyOnFailure } from "../prompts/index.js"
-import { checkSshCopyIdInstalled, connect, copyKeyToServer } from "../ssh/index.js"
-import type { ConnectionConfig, SshClient } from "../types.js"
+import { promptCopyKeyOnFailure } from "../prompts/index.ts"
+import { checkSshCopyIdInstalled, connect, copyKeyToServer } from "../ssh/index.ts"
+import type { ConnectionConfig, SshClient } from "../types.ts"
 
 export async function handleCopyAuthMethod(config: ConnectionConfig): Promise<"continue" | "retry"> {
   if (config.authMethod !== "copy" || !config.privateKeyPath) {
@@ -51,6 +51,7 @@ export async function handleSudoPasswordPrompt(
     message: "Enter the sudo password",
     validate(value) {
       if (!value) return "Password is required"
+      return undefined
     },
   })
   if (isCancel(sudoPw)) {

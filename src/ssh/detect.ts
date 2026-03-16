@@ -1,5 +1,5 @@
 import { existsSync } from "fs"
-import type { ServerInfo, SshClient } from "../types.js"
+import type { ServerInfo, SshClient } from "../types.ts"
 
 export function detectDefaultKeyPath(): string | undefined {
   const home = process.env.HOME ?? ""

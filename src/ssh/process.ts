@@ -1,4 +1,4 @@
-import type { CommandResult } from "../types.js"
+import type { CommandResult } from "../types.ts"
 
 export const DEFAULT_TIMEOUT = 300_000 // 5 minutes
 

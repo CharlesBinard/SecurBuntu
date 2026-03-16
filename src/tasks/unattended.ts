@@ -1,4 +1,4 @@
-import type { HardeningTask } from "../types.js"
+import type { HardeningTask } from "../types.ts"
 
 export const runConfigureUnattended: HardeningTask = async (ssh, options) => {
   if (!options.enableAutoUpdates) {

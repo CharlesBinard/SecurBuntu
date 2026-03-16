@@ -1,4 +1,4 @@
-import type { HardeningTask } from "../types.js"
+import type { HardeningTask } from "../types.ts"
 
 export const runCreateUser: HardeningTask = async (ssh, options) => {
   if (!(options.createSudoUser && options.sudoUsername && options.sudoPassword)) {

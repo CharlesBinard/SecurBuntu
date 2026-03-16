@@ -1,10 +1,10 @@
 import { log, spinner } from "@clack/prompts"
 import pc from "picocolors"
-import { promptConnection } from "../prompts/index.js"
-import { connect } from "../ssh/index.js"
-import type { ConnectionConfig, SshClient } from "../types.js"
-import { handleConnectionError, handleCopyAuthMethod } from "./error-handlers.js"
-import { verifyHostKey } from "./verify-host.js"
+import { promptConnection } from "../prompts/index.ts"
+import { connect } from "../ssh/index.ts"
+import type { ConnectionConfig, SshClient } from "../types.ts"
+import { handleConnectionError, handleCopyAuthMethod } from "./error-handlers.ts"
+import { verifyHostKey } from "./verify-host.ts"
 
 export async function connectWithRetry(): Promise<{ ssh: SshClient; connectionConfig: ConnectionConfig }> {
   const s = spinner()

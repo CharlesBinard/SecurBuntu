@@ -1,5 +1,5 @@
 import { mock as bunMock, describe, expect, test } from "bun:test"
-import { MockSshClient } from "./helpers/mock-ssh.js"
+import { MockSshClient } from "./helpers/mock-ssh.ts"
 
 bunMock.module("@clack/prompts", () => ({
   log: {
@@ -15,7 +15,7 @@ bunMock.module("@clack/prompts", () => ({
   },
 }))
 
-import { runAudit } from "../audit/index.js"
+import { runAudit } from "../audit/index.ts"
 
 describe("runAudit", () => {
   test("returns exactly 10 checks", async () => {

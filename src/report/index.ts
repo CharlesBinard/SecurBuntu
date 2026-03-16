@@ -1,2 +1,2 @@
-export { displayReport } from "./display.js"
-export { exportAuditMarkdown, exportReportMarkdown } from "./export.js"
+export { displayReport } from "./display.ts"
+export { exportAuditMarkdown, exportReportMarkdown } from "./export.ts"

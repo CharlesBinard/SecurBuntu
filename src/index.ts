@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import pc from "picocolors"
-import { initVersion, parseArgs, showBanner } from "./cli/index.js"
-import { run } from "./orchestrator.js"
+import { initVersion, parseArgs, showBanner } from "./cli/index.ts"
+import { run } from "./orchestrator.ts"
 
 async function main(): Promise<void> {
   await initVersion()

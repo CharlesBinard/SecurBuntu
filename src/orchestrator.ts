@@ -1,20 +1,20 @@
 import { confirm, isCancel, log, outro, spinner } from "@clack/prompts"
 import pc from "picocolors"
-import { displayAudit, runAudit } from "./audit/index.js"
-import { connectWithRetry } from "./connection/index.js"
-import { DryRunSshClient } from "./dry-run.js"
-import { LoggingSshClient } from "./logging.js"
+import { displayAudit, runAudit } from "./audit/index.ts"
+import { connectWithRetry } from "./connection/index.ts"
+import { DryRunSshClient } from "./dry-run.ts"
+import { LoggingSshClient } from "./logging.ts"
 import {
   promptConfirmation,
   promptExportAudit,
   promptExportLog,
   promptExportReport,
   promptHardeningOptions,
-} from "./prompts/index.js"
-import { displayReport, exportAuditMarkdown, exportReportMarkdown } from "./report/index.js"
-import { detectServerInfo } from "./ssh/index.js"
-import { executeTasks } from "./tasks/index.js"
-import type { AuditResult, ConnectionConfig, HardeningOptions, Report, ServerInfo, SshClient } from "./types.js"
+} from "./prompts/index.ts"
+import { displayReport, exportAuditMarkdown, exportReportMarkdown } from "./report/index.ts"
+import { detectServerInfo } from "./ssh/index.ts"
+import { executeTasks } from "./tasks/index.ts"
+import type { AuditResult, ConnectionConfig, HardeningOptions, Report, ServerInfo, SshClient } from "./types.ts"
 
 interface RunArgs {
   isDryRun: boolean

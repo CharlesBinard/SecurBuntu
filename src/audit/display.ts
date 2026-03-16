@@ -1,6 +1,6 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import type { AuditResult } from "../types.js"
+import type { AuditResult } from "../types.ts"
 
 function colorizeStatus(status: string, isGood: boolean, isBad: boolean): string {
   if (isGood) return pc.green(status)

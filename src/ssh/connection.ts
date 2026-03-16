@@ -1,6 +1,6 @@
 import { createHash } from "crypto"
-import type { CommandResult, ConnectionConfig, ExecOptions, SshClient } from "../types.js"
-import { spawnSsh, spawnSshpass } from "./process.js"
+import type { CommandResult, ConnectionConfig, ExecOptions, SshClient } from "../types.ts"
+import { spawnSsh, spawnSshpass } from "./process.ts"
 
 export function shellEscape(s: string): string {
   return `'${s.replace(/'/g, "'\\''")}'`

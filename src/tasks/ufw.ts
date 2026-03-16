@@ -1,4 +1,4 @@
-import type { HardeningTask, SshClient, UfwPort } from "../types.js"
+import type { HardeningTask, SshClient, UfwPort } from "../types.ts"
 
 function escapeShellQuote(s: string): string {
   return s.replace(/'/g, "'\\''")

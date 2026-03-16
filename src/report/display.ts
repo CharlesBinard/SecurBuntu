@@ -1,6 +1,6 @@
 import { note } from "@clack/prompts"
 import pc from "picocolors"
-import type { Report } from "../types.js"
+import type { Report } from "../types.ts"
 
 function formatAuditSection(report: Report): string[] {
   const lines: string[] = []

@@ -1,4 +1,4 @@
-import type { HardeningTask, SysctlOptions } from "../types.js"
+import type { HardeningTask, SysctlOptions } from "../types.ts"
 
 interface SysctlParam {
   key: string

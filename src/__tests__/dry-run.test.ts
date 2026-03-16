@@ -1,5 +1,5 @@
 import { mock as bunMock, describe, expect, test } from "bun:test"
-import { MockSshClient } from "./helpers/mock-ssh.js"
+import { MockSshClient } from "./helpers/mock-ssh.ts"
 
 // Mock @clack/prompts (hoisted before imports by Bun)
 bunMock.module("@clack/prompts", () => ({
@@ -17,7 +17,7 @@ bunMock.module("@clack/prompts", () => ({
   isCancel: () => false,
 }))
 
-import { DryRunSshClient } from "../dry-run.js"
+import { DryRunSshClient } from "../dry-run.ts"
 
 describe("DryRunSshClient", () => {
   test("exec records command and returns empty success", async () => {

@@ -1,8 +1,8 @@
 import type { spinner } from "@clack/prompts"
 import { confirm, isCancel, log } from "@clack/prompts"
 import pc from "picocolors"
-import { addToKnownHosts, fetchHostKeyFingerprint } from "../ssh/index.js"
-import type { ConnectionConfig } from "../types.js"
+import { addToKnownHosts, fetchHostKeyFingerprint } from "../ssh/index.ts"
+import type { ConnectionConfig } from "../types.ts"
 
 export async function verifyHostKey(
   config: ConnectionConfig,
