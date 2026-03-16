@@ -8,6 +8,7 @@
   "scripts": {
     "start": "bun src/index.ts",
     "test": "bun test",
+    "test:coverage": "bun test --coverage",
     "lint": "biome check ./src",
     "lint:fix": "biome check --write ./src",
     "format": "biome format --write ./src",
