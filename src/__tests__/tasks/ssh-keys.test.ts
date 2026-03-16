@@ -9,9 +9,15 @@ bunMock.module("fs", () => ({
     throw new Error(`Unexpected readFileSync: ${path}`)
   },
   existsSync: () => true,
-  writeFileSync: () => {},
-  appendFileSync: () => {},
-  mkdirSync: () => {},
+  writeFileSync: () => {
+    /* noop */
+  },
+  appendFileSync: () => {
+    /* noop */
+  },
+  mkdirSync: () => {
+    /* noop */
+  },
 }))
 
 import { runInjectSshKeys } from "../../tasks/ssh-keys.js"

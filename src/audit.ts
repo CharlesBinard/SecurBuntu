@@ -2,6 +2,12 @@ import * as p from "@clack/prompts"
 import pc from "picocolors"
 import type { AuditCheck, AuditResult, SshClient } from "./types.js"
 
+function colorizeStatus(status: string, isGood: boolean, isBad: boolean): string {
+  if (isGood) return pc.green(status)
+  if (isBad) return pc.yellow(status)
+  return pc.cyan(status)
+}
+
 export async function runAudit(ssh: SshClient): Promise<AuditResult> {
   const checks: AuditCheck[] = []
 
@@ -82,7 +88,7 @@ export function displayAudit(result: AuditResult): void {
       status === "default" ||
       status === "not set"
 
-    const colored = isGood ? pc.green(status) : isBad ? pc.yellow(status) : pc.cyan(status)
+    const colored = colorizeStatus(status, isGood, isBad)
 
     return `  ${pc.bold(check.name)}: ${colored}${check.detail ? ` ${pc.dim(check.detail)}` : ""}`
   })

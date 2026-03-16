@@ -8,7 +8,9 @@ const TEST_LOG_PATH = "/tmp/securbuntu-test-log.txt"
 afterEach(() => {
   try {
     unlinkSync(TEST_LOG_PATH)
-  } catch {}
+  } catch {
+    /* ignored */
+  }
 })
 
 describe("LoggingSshClient", () => {

@@ -1,7 +1,7 @@
 import type { HardeningTask } from "../types.js"
 
 export const runCreateUser: HardeningTask = async (ssh, options) => {
-  if (!options.createSudoUser || !options.sudoUsername || !options.sudoPassword) {
+  if (!(options.createSudoUser && options.sudoUsername && options.sudoPassword)) {
     return {
       name: "Create Sudo User",
       success: true,

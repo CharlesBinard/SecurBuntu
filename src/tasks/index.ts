@@ -60,7 +60,7 @@ export async function executeTasks(
       results.push(result)
 
       // On failure (not skip), ask whether to continue
-      if (!result.success && !result.message.startsWith("Skipped")) {
+      if (!(result.success || result.message.startsWith("Skipped"))) {
         const shouldContinue = await promptContinueOnFailure(task.label)
         if (!shouldContinue) {
           return results

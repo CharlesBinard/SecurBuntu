@@ -59,7 +59,9 @@ export class MockSshClient implements SshClient {
     return this.fileContents.has(remotePath)
   }
 
-  close(): void {}
+  close(): void {
+    /* noop */
+  }
 
   private findResponse(command: string): CommandResult {
     for (const { pattern, response } of this.responses) {

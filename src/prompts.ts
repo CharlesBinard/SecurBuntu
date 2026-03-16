@@ -28,13 +28,90 @@ function unwrapStringArray(value: string[] | symbol): string[] {
   return value
 }
 
+function formatRootLogin(policy: "no" | "prohibit-password" | "yes"): string {
+  if (policy === "no") return pc.green("disabled")
+  if (policy === "prohibit-password") return pc.cyan("key only")
+  return pc.yellow("allowed")
+}
+
+async function promptAuthCredentials(
+  authMethod: "key" | "password" | "copy",
+): Promise<{ privateKeyPath?: string; password?: string }> {
+  if (authMethod === "key" || authMethod === "copy") {
+    const defaultKey = detectDefaultKeyPath()
+    const keyPath = unwrapText(
+      await p.text({
+        message: "Path to your private SSH key",
+        placeholder: defaultKey ?? "~/.ssh/id_ed25519",
+        defaultValue: defaultKey,
+        validate(value) {
+          if (!value?.trim()) return "Key path is required"
+          const resolved = value.replace("~", process.env.HOME ?? "")
+          if (!existsSync(resolved)) return `File not found: ${resolved}`
+        },
+      }),
+    )
+    const privateKeyPath = keyPath.replace("~", process.env.HOME ?? "")
+
+    if (authMethod === "copy") {
+      await validateCopyKeyPrerequisites(privateKeyPath)
+    }
+
+    return { privateKeyPath }
+  }
+
+  const hasSshpass = await checkSshpassInstalled()
+  if (!hasSshpass) {
+    p.log.error(
+      `${pc.red("sshpass is required for password authentication but is not installed.")}\n` +
+        `  ${pc.dim("Install it with:")}\n` +
+        `  ${pc.cyan("  Ubuntu/Debian: sudo apt install sshpass")}\n` +
+        `  ${pc.cyan("  macOS:         brew install sshpass")}`,
+    )
+    process.exit(1)
+  }
+
+  const password = unwrapText(
+    await p.password({
+      message: "Enter the SSH password",
+      validate(value) {
+        if (!value) return "Password is required"
+      },
+    }),
+  )
+
+  return { password }
+}
+
+async function validateCopyKeyPrerequisites(privateKeyPath: string): Promise<void> {
+  const pubKeyPath = `${privateKeyPath}.pub`
+  if (!existsSync(pubKeyPath)) {
+    p.log.error(
+      `${pc.red(`Public key not found at ${pubKeyPath}`)}\n` +
+        `  ${pc.dim("Make sure the .pub file exists alongside your private key.")}`,
+    )
+    throw new Error(`Public key not found at ${pubKeyPath}`)
+  }
+
+  const hasSshCopyId = await checkSshCopyIdInstalled()
+  if (!hasSshCopyId) {
+    p.log.error(
+      `${pc.red("ssh-copy-id is required but is not installed.")}\n` +
+        `  ${pc.dim("Install it with:")}\n` +
+        `  ${pc.cyan("  Ubuntu/Debian: sudo apt install openssh-client")}\n` +
+        `  ${pc.cyan("  macOS:         brew install ssh-copy-id")}`,
+    )
+    throw new Error("ssh-copy-id is not installed")
+  }
+}
+
 export async function promptConnection(): Promise<ConnectionConfig> {
   const host = unwrapText(
     await p.text({
       message: "Enter the server IP address or hostname",
       placeholder: "192.168.1.100",
       validate(value) {
-        if (!value || !value.trim()) return "IP address is required"
+        if (!value?.trim()) return "IP address is required"
       },
     }),
   )
@@ -45,7 +122,7 @@ export async function promptConnection(): Promise<ConnectionConfig> {
       placeholder: "root",
       defaultValue: "root",
       validate(value) {
-        if (!value || !value.trim()) return "Username is required"
+        if (!value?.trim()) return "Username is required"
         if (!/^[a-z_][a-z0-9_-]*$/.test(value))
           return "Invalid username format (lowercase letters, digits, hyphens, underscores)"
       },
@@ -60,7 +137,7 @@ export async function promptConnection(): Promise<ConnectionConfig> {
       validate(value) {
         if (!value) return "Port is required"
         const port = parseInt(value, 10)
-        if (Number.isNaN(port) || port < 1 || port > 65535) return "Port must be between 1 and 65535"
+        if (Number.isNaN(port) || port < 1 || port > 65_535) return "Port must be between 1 and 65535"
       },
     }),
   )
@@ -76,68 +153,7 @@ export async function promptConnection(): Promise<ConnectionConfig> {
   })
   if (isCancel(authMethod)) handleCancel()
 
-  let privateKeyPath: string | undefined
-  let password: string | undefined
-
-  if (authMethod === "key" || authMethod === "copy") {
-    const defaultKey = detectDefaultKeyPath()
-    const keyPath = unwrapText(
-      await p.text({
-        message: "Path to your private SSH key",
-        placeholder: defaultKey ?? "~/.ssh/id_ed25519",
-        defaultValue: defaultKey,
-        validate(value) {
-          if (!value || !value.trim()) return "Key path is required"
-          const resolved = value.replace("~", process.env.HOME ?? "")
-          if (!existsSync(resolved)) return `File not found: ${resolved}`
-        },
-      }),
-    )
-    privateKeyPath = keyPath.replace("~", process.env.HOME ?? "")
-
-    if (authMethod === "copy") {
-      const pubKeyPath = `${privateKeyPath}.pub`
-      if (!existsSync(pubKeyPath)) {
-        p.log.error(
-          `${pc.red(`Public key not found at ${pubKeyPath}`)}\n` +
-            `  ${pc.dim("Make sure the .pub file exists alongside your private key.")}`,
-        )
-        throw new Error(`Public key not found at ${pubKeyPath}`)
-      }
-
-      const hasSshCopyId = await checkSshCopyIdInstalled()
-      if (!hasSshCopyId) {
-        p.log.error(
-          `${pc.red("ssh-copy-id is required but is not installed.")}\n` +
-            `  ${pc.dim("Install it with:")}\n` +
-            `  ${pc.cyan("  Ubuntu/Debian: sudo apt install openssh-client")}\n` +
-            `  ${pc.cyan("  macOS:         brew install ssh-copy-id")}`,
-        )
-        throw new Error("ssh-copy-id is not installed")
-      }
-    }
-  } else {
-    const hasSshpass = await checkSshpassInstalled()
-    if (!hasSshpass) {
-      p.log.error(
-        `${pc.red("sshpass is required for password authentication but is not installed.")}\n` +
-          `  ${pc.dim("Install it with:")}\n` +
-          `  ${pc.cyan("  Ubuntu/Debian: sudo apt install sshpass")}\n` +
-          `  ${pc.cyan("  macOS:         brew install sshpass")}`,
-      )
-      process.exit(1)
-    }
-
-    const pw = unwrapText(
-      await p.password({
-        message: "Enter the SSH password",
-        validate(value) {
-          if (!value) return "Password is required"
-        },
-      }),
-    )
-    password = pw
-  }
+  const { privateKeyPath, password } = await promptAuthCredentials(authMethod)
 
   return {
     host: host.trim(),
@@ -150,105 +166,75 @@ export async function promptConnection(): Promise<ConnectionConfig> {
   }
 }
 
-export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient): Promise<HardeningOptions> {
-  const options: HardeningOptions = {
-    createSudoUser: false,
-    addPersonalKey: false,
-    configureCoolify: false,
-    changeSshPort: false,
-    permitRootLogin: "yes",
-    disablePasswordAuth: false,
-    disableX11Forwarding: true,
-    maxAuthTries: 5,
-    installUfw: false,
-    ufwPorts: [],
-    installFail2ban: false,
-    enableAutoUpdates: false,
-    enableSysctl: false,
-    enableSshBanner: false,
-  }
+async function promptSudoUser(server: ServerInfo, options: HardeningOptions): Promise<void> {
+  if (!server.isRoot) return
 
-  // 1. Create sudo user (only if root)
-  if (server.isRoot) {
-    p.log.info(pc.dim("A dedicated sudo user is recommended for daily operations instead of using root directly."))
-    const createUser = unwrapBoolean(
-      await p.confirm({
-        message: "You are connected as root. Do you want to create a new sudo user?",
-      }),
-    )
+  p.log.info(pc.dim("A dedicated sudo user is recommended for daily operations instead of using root directly."))
+  const createUser = unwrapBoolean(
+    await p.confirm({
+      message: "You are connected as root. Do you want to create a new sudo user?",
+    }),
+  )
 
-    if (createUser) {
-      options.createSudoUser = true
+  if (!createUser) return
 
-      const sudoUsername = unwrapText(
-        await p.text({
-          message: "Enter the new username",
-          placeholder: "deploy",
-          validate(value) {
-            if (!value || !value.trim()) return "Username is required"
-            if (!/^[a-z_][a-z0-9_-]*$/.test(value)) return "Invalid username format"
-          },
-        }),
-      )
-      options.sudoUsername = sudoUsername.trim()
+  options.createSudoUser = true
 
-      const sudoPassword = unwrapText(
-        await p.password({
-          message: `Enter password for ${sudoUsername}`,
-          validate(value) {
-            if (!value || value.length < 8) return "Password must be at least 8 characters"
-          },
-        }),
-      )
-      options.sudoPassword = sudoPassword
-    }
-  }
+  const sudoUsername = unwrapText(
+    await p.text({
+      message: "Enter the new username",
+      placeholder: "deploy",
+      validate(value) {
+        if (!value?.trim()) return "Username is required"
+        if (!/^[a-z_][a-z0-9_-]*$/.test(value)) return "Invalid username format"
+      },
+    }),
+  )
+  options.sudoUsername = sudoUsername.trim()
 
-  // 2. Add personal SSH key
+  const sudoPassword = unwrapText(
+    await p.password({
+      message: `Enter password for ${sudoUsername}`,
+      validate(value) {
+        if (!value || value.length < 8) return "Password must be at least 8 characters"
+      },
+    }),
+  )
+  options.sudoPassword = sudoPassword
+}
+
+async function promptPersonalKey(options: HardeningOptions): Promise<boolean> {
   const addKey = unwrapBoolean(
     await p.confirm({
       message: "Do you want to add a personal SSH public key to the server?",
     }),
   )
 
-  if (addKey) {
-    options.addPersonalKey = true
-    const defaultPubKey = detectDefaultPubKeyPath()
+  if (!addKey) return false
 
-    const pubKeyPath = unwrapText(
-      await p.text({
-        message: "Path to your public SSH key",
-        placeholder: defaultPubKey ?? "~/.ssh/id_ed25519.pub",
-        defaultValue: defaultPubKey,
-        validate(value) {
-          if (!value || !value.trim()) return "Path is required"
-          const resolved = value.replace("~", process.env.HOME ?? "")
-          if (!existsSync(resolved)) return `File not found: ${resolved}`
-          const content = readFileSync(resolved, "utf-8").trim()
-          if (!content.startsWith("ssh-")) return "Invalid public key format (must start with ssh-)"
-        },
-      }),
-    )
-    options.personalKeyPath = pubKeyPath.replace("~", process.env.HOME ?? "")
-  }
+  options.addPersonalKey = true
+  const defaultPubKey = detectDefaultPubKeyPath()
 
-  // 3. Configure for Coolify
-  const coolify = unwrapBoolean(
-    await p.confirm({
-      message: "Do you want to configure this server for Coolify?",
-      initialValue: false,
+  const pubKeyPath = unwrapText(
+    await p.text({
+      message: "Path to your public SSH key",
+      placeholder: defaultPubKey ?? "~/.ssh/id_ed25519.pub",
+      defaultValue: defaultPubKey,
+      validate(value) {
+        if (!value?.trim()) return "Path is required"
+        const resolved = value.replace("~", process.env.HOME ?? "")
+        if (!existsSync(resolved)) return `File not found: ${resolved}`
+        const content = readFileSync(resolved, "utf-8").trim()
+        if (!content.startsWith("ssh-")) return "Invalid public key format (must start with ssh-)"
+      },
     }),
   )
-  options.configureCoolify = coolify
+  options.personalKeyPath = pubKeyPath.replace("~", process.env.HOME ?? "")
+  return true
+}
 
-  if (coolify) {
-    p.log.info(pc.dim("Coolify requires root SSH access. Root login will be set to 'prohibit-password' (key-only)."))
-    if (!addKey) {
-      p.log.warning(pc.yellow("You should add an SSH key for root access. Coolify will need it."))
-    }
-  }
-
-  // 4. Change SSH port
+async function promptSshOptions(options: HardeningOptions): Promise<void> {
+  // Change SSH port
   const changePort = unwrapBoolean(
     await p.confirm({
       message: "Do you want to change the default SSH port (22)?",
@@ -266,7 +252,7 @@ export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient)
           if (!value) return "Must be a number"
           const port = parseInt(value, 10)
           if (Number.isNaN(port)) return "Must be a number"
-          if (port < 1024 || port > 65535) return "Port must be between 1024 and 65535"
+          if (port < 1024 || port > 65_535) return "Port must be between 1024 and 65535"
         },
       }),
     )
@@ -282,7 +268,7 @@ export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient)
   )
   options.enableSshBanner = enableBanner
 
-  // 5. Root login policy
+  // Root login policy
   p.log.info(
     pc.dim(
       "Controls whether root can log in via SSH.\n" +
@@ -304,7 +290,7 @@ export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient)
   if (isCancel(rootLoginChoice)) handleCancel()
   options.permitRootLogin = rootLoginChoice
 
-  // 6. X11 Forwarding
+  // X11 Forwarding
   p.log.info(
     pc.dim(
       "X11 forwarding allows graphical apps from the server to display on your machine.\n" +
@@ -319,7 +305,7 @@ export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient)
   )
   options.disableX11Forwarding = disableX11
 
-  // 7. Max auth tries
+  // Max auth tries
   p.log.info(
     pc.dim(
       "Limits the number of authentication attempts per connection.\n" +
@@ -340,9 +326,9 @@ export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient)
     }),
   )
   options.maxAuthTries = parseInt(maxTriesStr, 10)
+}
 
-  // 8. Disable password auth (with hard gate)
-  const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
+async function promptPasswordAuth(options: HardeningOptions, ssh: SshClient): Promise<void> {
   const targetUser =
     options.createSudoUser && options.sudoUsername ? options.sudoUsername : (await ssh.exec("whoami")).stdout
 
@@ -351,7 +337,6 @@ export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient)
     `test -f '${targetHome}/.ssh/authorized_keys' && grep -c 'ssh-' '${targetHome}/.ssh/authorized_keys' || echo 0`,
   )
   const hasExistingKey = parseInt(existingKeysResult.stdout, 10) > 0
-
   const willHaveKey = options.addPersonalKey || hasExistingKey
 
   if (willHaveKey) {
@@ -370,117 +355,115 @@ export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient)
     )
     options.disablePasswordAuth = false
   }
+}
 
-  // 6. Install UFW
+function parseUfwPortChoice(choice: string): { port: string; protocol: "tcp" | "udp" | "both"; comment: string } {
+  const pipeIdx = choice.indexOf("|")
+  const portProto = choice.slice(0, pipeIdx)
+  const comment = choice.slice(pipeIdx + 1)
+  const slashIdx = portProto.indexOf("/")
+  const port = portProto.slice(0, slashIdx)
+  const protocol = portProto.slice(slashIdx + 1)
+
+  if (protocol !== "tcp" && protocol !== "udp" && protocol !== "both") {
+    throw new Error(`Invalid protocol: ${protocol}`)
+  }
+
+  return { port, protocol, comment }
+}
+
+function validatePortInput(value: string | undefined): string | undefined {
+  if (!value?.trim()) return "Port is required"
+  if (!/^\d+(?::\d+)?$/.test(value)) return "Invalid format. Use: 8080 or 6000:6100"
+  const parts = value.split(":")
+  for (const part of parts) {
+    const n = parseInt(part, 10)
+    if (n < 1 || n > 65_535) return "Port must be between 1 and 65535"
+  }
+  if (parts.length === 2 && parseInt(parts[0] ?? "0", 10) >= parseInt(parts[1] ?? "0", 10)) {
+    return "Range start must be less than range end"
+  }
+}
+
+async function promptCustomUfwPorts(): Promise<{ port: string; protocol: "tcp" | "udp" | "both"; comment: string }[]> {
+  const customPorts: { port: string; protocol: "tcp" | "udp" | "both"; comment: string }[] = []
+
+  let addMore = unwrapBoolean(
+    await p.confirm({
+      message: "Do you want to add a custom port?",
+      initialValue: false,
+    }),
+  )
+
+  while (addMore) {
+    const customPort = unwrapText(
+      await p.text({
+        message: "Enter port or range (e.g., 8080 or 6000:6100)",
+        validate: validatePortInput,
+      }),
+    )
+
+    const customProto = await p.select({
+      message: "Protocol for this port?",
+      options: [
+        { value: "tcp" as const, label: "TCP" },
+        { value: "udp" as const, label: "UDP" },
+        { value: "both" as const, label: "Both" },
+      ],
+    })
+    if (isCancel(customProto)) handleCancel()
+
+    customPorts.push({
+      port: customPort.trim(),
+      protocol: customProto,
+      comment: `SecurBuntu: Custom port ${customPort}`,
+    })
+
+    addMore = unwrapBoolean(
+      await p.confirm({
+        message: "Add another custom port?",
+        initialValue: false,
+      }),
+    )
+  }
+
+  return customPorts
+}
+
+async function promptUfwOptions(options: HardeningOptions, sshPort: number): Promise<void> {
   const installUfw = unwrapBoolean(
     await p.confirm({
       message: "Do you want to install and configure UFW (firewall)?",
     }),
   )
 
-  if (installUfw) {
-    options.installUfw = true
-    const sshPortStr = String(sshPort)
+  if (!installUfw) return
 
-    const portChoices = unwrapStringArray(
-      await p.multiselect({
-        message: "Select ports to allow through the firewall",
-        options: [
-          { value: `${sshPortStr}/tcp|SecurBuntu: SSH access`, label: `SSH (${sshPortStr}/tcp)`, hint: "required" },
-          { value: "80/tcp|SecurBuntu: HTTP web traffic", label: "HTTP (80/tcp)" },
-          { value: "443/tcp|SecurBuntu: HTTPS web traffic", label: "HTTPS (443/tcp)" },
-          { value: "8000/tcp|SecurBuntu: Development server", label: "Dev server (8000/tcp)" },
-          { value: "3000/tcp|SecurBuntu: Node.js / Coolify UI", label: "Node.js / Coolify (3000/tcp)" },
-        ],
-        required: true,
-        initialValues: [`${sshPortStr}/tcp|SecurBuntu: SSH access`],
-      }),
-    )
+  options.installUfw = true
+  const sshPortStr = String(sshPort)
 
-    options.ufwPorts = portChoices.map((choice) => {
-      const pipeIdx = choice.indexOf("|")
-      const portProto = choice.slice(0, pipeIdx)
-      const comment = choice.slice(pipeIdx + 1)
-      const slashIdx = portProto.indexOf("/")
-      const port = portProto.slice(0, slashIdx)
-      const protocol = portProto.slice(slashIdx + 1)
-
-      if (protocol !== "tcp" && protocol !== "udp" && protocol !== "both") {
-        throw new Error(`Invalid protocol: ${protocol}`)
-      }
-
-      return { port, protocol, comment }
-    })
-
-    // Custom ports loop
-    let addMore = unwrapBoolean(
-      await p.confirm({
-        message: "Do you want to add a custom port?",
-        initialValue: false,
-      }),
-    )
-
-    while (addMore) {
-      const customPort = unwrapText(
-        await p.text({
-          message: "Enter port or range (e.g., 8080 or 6000:6100)",
-          validate(value) {
-            if (!value || !value.trim()) return "Port is required"
-            if (!/^\d+(?::\d+)?$/.test(value)) return "Invalid format. Use: 8080 or 6000:6100"
-            const parts = value.split(":")
-            for (const part of parts) {
-              const n = parseInt(part, 10)
-              if (n < 1 || n > 65535) return "Port must be between 1 and 65535"
-            }
-            if (parts.length === 2 && parseInt(parts[0]!, 10) >= parseInt(parts[1]!, 10)) {
-              return "Range start must be less than range end"
-            }
-          },
-        }),
-      )
-
-      const customProto = await p.select({
-        message: "Protocol for this port?",
-        options: [
-          { value: "tcp" as const, label: "TCP" },
-          { value: "udp" as const, label: "UDP" },
-          { value: "both" as const, label: "Both" },
-        ],
-      })
-      if (isCancel(customProto)) handleCancel()
-
-      options.ufwPorts.push({
-        port: customPort.trim(),
-        protocol: customProto,
-        comment: `SecurBuntu: Custom port ${customPort}`,
-      })
-
-      addMore = unwrapBoolean(
-        await p.confirm({
-          message: "Add another custom port?",
-          initialValue: false,
-        }),
-      )
-    }
-  }
-
-  // 7. Fail2ban
-  const installFail2ban = unwrapBoolean(
-    await p.confirm({
-      message: "Do you want to install Fail2ban to protect against brute-force attacks?",
+  const portChoices = unwrapStringArray(
+    await p.multiselect({
+      message: "Select ports to allow through the firewall",
+      options: [
+        { value: `${sshPortStr}/tcp|SecurBuntu: SSH access`, label: `SSH (${sshPortStr}/tcp)`, hint: "required" },
+        { value: "80/tcp|SecurBuntu: HTTP web traffic", label: "HTTP (80/tcp)" },
+        { value: "443/tcp|SecurBuntu: HTTPS web traffic", label: "HTTPS (443/tcp)" },
+        { value: "8000/tcp|SecurBuntu: Development server", label: "Dev server (8000/tcp)" },
+        { value: "3000/tcp|SecurBuntu: Node.js / Coolify UI", label: "Node.js / Coolify (3000/tcp)" },
+      ],
+      required: true,
+      initialValues: [`${sshPortStr}/tcp|SecurBuntu: SSH access`],
     }),
   )
-  options.installFail2ban = installFail2ban
 
-  // 8. Auto-updates
-  const autoUpdates = unwrapBoolean(
-    await p.confirm({
-      message: "Do you want to enable automatic security updates (unattended-upgrades)?",
-    }),
-  )
-  options.enableAutoUpdates = autoUpdates
+  options.ufwPorts = portChoices.map(parseUfwPortChoice)
 
-  // 9. Kernel hardening (sysctl)
+  const customPorts = await promptCustomUfwPorts()
+  options.ufwPorts.push(...customPorts)
+}
+
+async function promptSysctlOptions(options: HardeningOptions): Promise<void> {
   const enableSysctl = unwrapBoolean(
     await p.confirm({
       message: "Do you want to apply kernel security parameters (sysctl)?",
@@ -488,102 +471,169 @@ export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient)
     }),
   )
 
-  if (enableSysctl) {
-    options.enableSysctl = true
+  if (!enableSysctl) return
 
-    const sysctlChoices: { value: string; label: string; hint?: string }[] = []
+  options.enableSysctl = true
 
-    if (!options.configureCoolify) {
-      sysctlChoices.push({
-        value: "blockForwarding",
-        label: "Block traffic forwarding",
-        hint: "recommended — prevents routing; disable if using Docker",
-      })
-    } else {
-      p.log.info(pc.dim("IP forwarding is required for Docker/Coolify — this option has been removed."))
-    }
+  const sysctlChoices: { value: string; label: string; hint?: string }[] = []
 
-    sysctlChoices.push(
-      {
-        value: "ignoreRedirects",
-        label: "Ignore ICMP redirects",
-        hint: "recommended — blocks fake routing messages",
-      },
-      {
-        value: "disableSourceRouting",
-        label: "Disable source routing",
-        hint: "recommended — blocks packets with forced paths",
-      },
-      {
-        value: "synFloodProtection",
-        label: "SYN flood protection",
-        hint: "recommended — limits connection saturation attacks",
-      },
-      {
-        value: "disableIcmpBroadcast",
-        label: "Disable ICMP broadcast replies",
-        hint: "hides the server from ping scans",
-      },
-    )
+  if (!options.configureCoolify) {
+    sysctlChoices.push({
+      value: "blockForwarding",
+      label: "Block traffic forwarding",
+      hint: "recommended — prevents routing; disable if using Docker",
+    })
+  } else {
+    p.log.info(pc.dim("IP forwarding is required for Docker/Coolify — this option has been removed."))
+  }
 
-    const defaultValues = sysctlChoices.filter((c) => c.hint?.startsWith("recommended")).map((c) => c.value)
+  sysctlChoices.push(
+    {
+      value: "ignoreRedirects",
+      label: "Ignore ICMP redirects",
+      hint: "recommended — blocks fake routing messages",
+    },
+    {
+      value: "disableSourceRouting",
+      label: "Disable source routing",
+      hint: "recommended — blocks packets with forced paths",
+    },
+    {
+      value: "synFloodProtection",
+      label: "SYN flood protection",
+      hint: "recommended — limits connection saturation attacks",
+    },
+    {
+      value: "disableIcmpBroadcast",
+      label: "Disable ICMP broadcast replies",
+      hint: "hides the server from ping scans",
+    },
+  )
 
-    const selected = unwrapStringArray(
-      await p.multiselect({
-        message: "Select the protections to apply",
-        options: sysctlChoices,
-        initialValues: defaultValues,
-      }),
-    )
+  const defaultValues = sysctlChoices.filter((c) => c.hint?.startsWith("recommended")).map((c) => c.value)
 
-    options.sysctlOptions = {
-      blockForwarding: selected.includes("blockForwarding"),
-      ignoreRedirects: selected.includes("ignoreRedirects"),
-      disableSourceRouting: selected.includes("disableSourceRouting"),
-      synFloodProtection: selected.includes("synFloodProtection"),
-      disableIcmpBroadcast: selected.includes("disableIcmpBroadcast"),
+  const selected = unwrapStringArray(
+    await p.multiselect({
+      message: "Select the protections to apply",
+      options: sysctlChoices,
+      initialValues: defaultValues,
+    }),
+  )
+
+  options.sysctlOptions = {
+    blockForwarding: selected.includes("blockForwarding"),
+    ignoreRedirects: selected.includes("ignoreRedirects"),
+    disableSourceRouting: selected.includes("disableSourceRouting"),
+    synFloodProtection: selected.includes("synFloodProtection"),
+    disableIcmpBroadcast: selected.includes("disableIcmpBroadcast"),
+  }
+}
+
+export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient): Promise<HardeningOptions> {
+  const options: HardeningOptions = {
+    createSudoUser: false,
+    addPersonalKey: false,
+    configureCoolify: false,
+    changeSshPort: false,
+    permitRootLogin: "yes",
+    disablePasswordAuth: false,
+    disableX11Forwarding: true,
+    maxAuthTries: 5,
+    installUfw: false,
+    ufwPorts: [],
+    installFail2ban: false,
+    enableAutoUpdates: false,
+    enableSysctl: false,
+    enableSshBanner: false,
+  }
+
+  await promptSudoUser(server, options)
+
+  const addedKey = await promptPersonalKey(options)
+
+  // Configure for Coolify
+  const coolify = unwrapBoolean(
+    await p.confirm({
+      message: "Do you want to configure this server for Coolify?",
+      initialValue: false,
+    }),
+  )
+  options.configureCoolify = coolify
+
+  if (coolify) {
+    p.log.info(pc.dim("Coolify requires root SSH access. Root login will be set to 'prohibit-password' (key-only)."))
+    if (!addedKey) {
+      p.log.warning(pc.yellow("You should add an SSH key for root access. Coolify will need it."))
     }
   }
 
+  await promptSshOptions(options)
+  await promptPasswordAuth(options, ssh)
+
+  const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
+  await promptUfwOptions(options, sshPort)
+
+  // Fail2ban
+  options.installFail2ban = unwrapBoolean(
+    await p.confirm({
+      message: "Do you want to install Fail2ban to protect against brute-force attacks?",
+    }),
+  )
+
+  // Auto-updates
+  options.enableAutoUpdates = unwrapBoolean(
+    await p.confirm({
+      message: "Do you want to enable automatic security updates (unattended-upgrades)?",
+    }),
+  )
+
+  await promptSysctlOptions(options)
+
   return options
+}
+
+function yesNo(value: boolean): string {
+  return value ? pc.green("Yes") : pc.dim("No")
+}
+
+function buildSummaryLines(options: HardeningOptions): string[] {
+  const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
+  const lines: string[] = []
+
+  if (options.createSudoUser) lines.push(`  Create sudo user: ${pc.cyan(options.sudoUsername ?? "")}`)
+  if (options.addPersonalKey) lines.push(`  Add SSH key: ${pc.cyan(options.personalKeyPath ?? "")}`)
+  lines.push(`  Coolify: ${yesNo(options.configureCoolify)}`)
+  lines.push(`  SSH port: ${options.changeSshPort ? pc.yellow(String(sshPort)) : pc.dim("22 (default)")}`)
+  lines.push(`  Root login: ${formatRootLogin(options.permitRootLogin)}`)
+  lines.push(`  SSH banner: ${yesNo(options.enableSshBanner)}`)
+  lines.push(`  Disable password auth: ${yesNo(options.disablePasswordAuth)}`)
+  lines.push(`  X11 forwarding: ${options.disableX11Forwarding ? pc.green("disabled") : pc.dim("enabled")}`)
+  lines.push(`  Max auth tries: ${pc.cyan(String(options.maxAuthTries))}`)
+  lines.push(`  UFW: ${formatUfwSummary(options)}`)
+  lines.push(`  Fail2ban: ${yesNo(options.installFail2ban)}`)
+  lines.push(`  Auto-updates: ${yesNo(options.enableAutoUpdates)}`)
+  lines.push(`  Kernel hardening: ${formatSysctlSummary(options)}`)
+
+  return lines
+}
+
+function formatUfwSummary(options: HardeningOptions): string {
+  if (!options.installUfw) return pc.dim("No")
+  const ports = options.ufwPorts.map((ufw) => ufw.port).join(", ")
+  return `${pc.green("Yes")} (ports: ${pc.cyan(ports)})`
+}
+
+function formatSysctlSummary(options: HardeningOptions): string {
+  if (!(options.enableSysctl && options.sysctlOptions)) return pc.dim("No")
+  const count = Object.values(options.sysctlOptions).filter(Boolean).length
+  return pc.green(`${count} parameter(s)`)
 }
 
 export async function promptConfirmation(
   host: string,
   options: HardeningOptions,
 ): Promise<"apply" | "simulate" | false> {
-  const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
-  const lines: string[] = []
-
-  if (options.createSudoUser) lines.push(`  Create sudo user: ${pc.cyan(options.sudoUsername ?? "")}`)
-  if (options.addPersonalKey) lines.push(`  Add SSH key: ${pc.cyan(options.personalKeyPath ?? "")}`)
-  lines.push(`  Coolify: ${options.configureCoolify ? pc.green("Yes") : pc.dim("No")}`)
-  lines.push(`  SSH port: ${options.changeSshPort ? pc.yellow(String(sshPort)) : pc.dim("22 (default)")}`)
-  lines.push(
-    `  Root login: ${options.permitRootLogin === "no" ? pc.green("disabled") : options.permitRootLogin === "prohibit-password" ? pc.cyan("key only") : pc.yellow("allowed")}`,
-  )
-  lines.push(`  SSH banner: ${options.enableSshBanner ? pc.green("Yes") : pc.dim("No")}`)
-  lines.push(`  Disable password auth: ${options.disablePasswordAuth ? pc.green("Yes") : pc.dim("No")}`)
-  lines.push(`  X11 forwarding: ${options.disableX11Forwarding ? pc.green("disabled") : pc.dim("enabled")}`)
-  lines.push(`  Max auth tries: ${pc.cyan(String(options.maxAuthTries))}`)
-
-  if (options.installUfw) {
-    const ports = options.ufwPorts.map((p) => p.port).join(", ")
-    lines.push(`  UFW: ${pc.green("Yes")} (ports: ${pc.cyan(ports)})`)
-  } else {
-    lines.push(`  UFW: ${pc.dim("No")}`)
-  }
-
-  lines.push(`  Fail2ban: ${options.installFail2ban ? pc.green("Yes") : pc.dim("No")}`)
-  lines.push(`  Auto-updates: ${options.enableAutoUpdates ? pc.green("Yes") : pc.dim("No")}`)
-
-  if (options.enableSysctl && options.sysctlOptions) {
-    const count = Object.values(options.sysctlOptions).filter(Boolean).length
-    lines.push(`  Kernel hardening: ${pc.green(`${count} parameter(s)`)}`)
-  } else {
-    lines.push(`  Kernel hardening: ${pc.dim("No")}`)
-  }
-
+  const lines = buildSummaryLines(options)
   p.note(lines.join("\n"), "Summary of changes")
 
   const action = await p.select({

@@ -213,7 +213,9 @@ export function detectDefaultKeyPath(): string | undefined {
   for (const candidate of candidates) {
     try {
       if (existsSync(candidate)) return candidate
-    } catch {}
+    } catch {
+      /* ignored */
+    }
   }
   return undefined
 }
@@ -224,7 +226,9 @@ export function detectDefaultPubKeyPath(): string | undefined {
   for (const candidate of candidates) {
     try {
       if (existsSync(candidate)) return candidate
-    } catch {}
+    } catch {
+      /* ignored */
+    }
   }
   return undefined
 }

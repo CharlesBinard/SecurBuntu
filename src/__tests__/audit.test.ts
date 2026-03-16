@@ -2,8 +2,17 @@ import { mock as bunMock, describe, expect, test } from "bun:test"
 import { MockSshClient } from "./helpers/mock-ssh.js"
 
 bunMock.module("@clack/prompts", () => ({
-  log: { info: () => {}, warning: () => {} },
-  note: () => {},
+  log: {
+    info: () => {
+      /* noop */
+    },
+    warning: () => {
+      /* noop */
+    },
+  },
+  note: () => {
+    /* noop */
+  },
 }))
 
 import { runAudit } from "../audit.js"

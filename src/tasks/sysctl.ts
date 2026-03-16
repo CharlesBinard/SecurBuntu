@@ -36,7 +36,7 @@ function buildSysctlParams(opts: SysctlOptions): SysctlParam[] {
 }
 
 export const runConfigureSysctl: HardeningTask = async (ssh, options) => {
-  if (!options.enableSysctl || !options.sysctlOptions) {
+  if (!(options.enableSysctl && options.sysctlOptions)) {
     return {
       name: "Kernel Hardening",
       success: true,

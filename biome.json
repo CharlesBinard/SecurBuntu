@@ -1,53 +1,100 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.4.7/schema.json",
-	"vcs": {
-		"enabled": true,
-		"clientKind": "git",
-		"useIgnoreFile": true
-	},
-	"files": {
-		"ignoreUnknown": true,
-		"includes": ["src/**/*.ts"]
-	},
-	"formatter": {
-		"enabled": true,
-		"indentStyle": "space",
-		"indentWidth": 2,
-		"lineWidth": 120,
-		"lineEnding": "lf"
-	},
-	"linter": {
-		"enabled": true,
-		"rules": {
-			"recommended": true,
-			"complexity": {
-				"noForEach": "off"
-			},
-			"style": {
-				"noNonNullAssertion": "off",
-				"useNodejsImportProtocol": "off"
-			},
-			"suspicious": {
-				"noExplicitAny": "error"
-			},
-			"security": {
-				"noGlobalEval": "error"
-			}
-		}
-	},
-	"javascript": {
-		"formatter": {
-			"quoteStyle": "double",
-			"trailingCommas": "all",
-			"semicolons": "asNeeded"
-		}
-	},
-	"assist": {
-		"enabled": true,
-		"actions": {
-			"source": {
-				"organizeImports": "on"
-			}
-		}
-	}
+  "$schema": "https://biomejs.dev/schemas/2.4.7/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": ["src/**/*.ts"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120,
+    "lineEnding": "lf"
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+
+      "correctness": {
+        "noUndeclaredVariables": "error",
+        "noUnusedFunctionParameters": "warn",
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error"
+      },
+
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noImplicitAnyLet": "error",
+        "noEvolvingTypes": "error",
+        "noEmptyBlockStatements": "error",
+        "useErrorMessage": "error",
+        "noConstEnum": "error",
+        "noTsIgnore": "error"
+      },
+
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "warn",
+        "noForEach": "off",
+        "noUselessStringConcat": "error",
+        "noUselessUndefinedInitialization": "error",
+        "useDateNow": "error",
+        "useSimplifiedLogicExpression": "warn"
+      },
+
+      "style": {
+        "noNonNullAssertion": "error",
+        "useNodejsImportProtocol": "off",
+        "useConst": "error",
+        "useImportType": "error",
+        "useExportType": "error",
+        "useTemplate": "error",
+        "useConsistentArrayType": "error",
+        "useForOf": "error",
+        "useCollapsedElseIf": "error",
+        "noParameterAssign": "error",
+        "useDefaultParameterLast": "error",
+        "useThrowOnlyError": "error",
+        "useThrowNewError": "error",
+        "noCommonJs": "error",
+        "noNamespace": "error",
+        "noNestedTernary": "warn",
+        "useExplicitLengthCheck": "error",
+        "useArrayLiterals": "error",
+        "useNumericSeparators": "error",
+        "useDefaultSwitchClause": "error"
+      },
+
+      "performance": {
+        "noDelete": "warn",
+        "noBarrelFile": "warn",
+        "noReExportAll": "warn"
+      },
+
+      "security": {
+        "noGlobalEval": "error"
+      }
+    }
+  },
+  "javascript": {
+    "globals": ["Bun"],
+    "formatter": {
+      "quoteStyle": "double",
+      "trailingCommas": "all",
+      "semicolons": "asNeeded"
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  }
 }

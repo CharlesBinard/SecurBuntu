@@ -1,7 +1,40 @@
-import type { HardeningTask } from "../types.js"
+import type { HardeningTask, SshClient, UfwPort } from "../types.js"
 
 function escapeShellQuote(s: string): string {
   return s.replace(/'/g, "'\\''")
+}
+
+async function applyUfwRules(
+  ssh: SshClient,
+  ufwPorts: UfwPort[],
+): Promise<{ addedRules: string[]; failedRules: string[] }> {
+  const addedRules: string[] = []
+  const failedRules: string[] = []
+
+  for (const rule of ufwPorts) {
+    const ruleLabel = rule.protocol === "both" ? `${rule.port}/tcp+udp` : `${rule.port}/${rule.protocol}`
+    const success = await applyOneUfwRule(ssh, rule)
+    if (success) {
+      addedRules.push(ruleLabel)
+    } else {
+      failedRules.push(ruleLabel)
+    }
+  }
+
+  return { addedRules, failedRules }
+}
+
+async function applyOneUfwRule(ssh: SshClient, rule: UfwPort): Promise<boolean> {
+  const escapedComment = escapeShellQuote(rule.comment)
+
+  if (rule.protocol === "both") {
+    const tcpResult = await ssh.exec(`ufw allow ${rule.port}/tcp comment '${escapedComment}'`)
+    const udpResult = await ssh.exec(`ufw allow ${rule.port}/udp comment '${escapedComment}'`)
+    return tcpResult.exitCode === 0 && udpResult.exitCode === 0
+  }
+
+  const result = await ssh.exec(`ufw allow ${rule.port}/${rule.protocol} comment '${escapedComment}'`)
+  return result.exitCode === 0
 }
 
 export const runConfigureUfw: HardeningTask = async (ssh, options) => {
@@ -23,30 +56,7 @@ export const runConfigureUfw: HardeningTask = async (ssh, options) => {
     }
   }
 
-  const addedRules: string[] = []
-  const failedRules: string[] = []
-
-  for (const rule of options.ufwPorts) {
-    if (rule.protocol === "both") {
-      const escapedComment = escapeShellQuote(rule.comment)
-      const tcpResult = await ssh.exec(`ufw allow ${rule.port}/tcp comment '${escapedComment}'`)
-      const udpResult = await ssh.exec(`ufw allow ${rule.port}/udp comment '${escapedComment}'`)
-      if (tcpResult.exitCode !== 0 || udpResult.exitCode !== 0) {
-        failedRules.push(`${rule.port}/tcp+udp`)
-      } else {
-        addedRules.push(`${rule.port}/tcp+udp`)
-      }
-    } else {
-      const ruleResult = await ssh.exec(
-        `ufw allow ${rule.port}/${rule.protocol} comment '${escapeShellQuote(rule.comment)}'`,
-      )
-      if (ruleResult.exitCode !== 0) {
-        failedRules.push(`${rule.port}/${rule.protocol}`)
-      } else {
-        addedRules.push(`${rule.port}/${rule.protocol}`)
-      }
-    }
-  }
+  const { addedRules, failedRules } = await applyUfwRules(ssh, options.ufwPorts)
 
   const enableResult = await ssh.exec("ufw --force enable")
   if (enableResult.exitCode !== 0) {

@@ -9,7 +9,9 @@ afterEach(() => {
   for (const f of cleanupFiles) {
     try {
       unlinkSync(f)
-    } catch {}
+    } catch {
+      /* ignored */
+    }
   }
   cleanupFiles.length = 0
 })
