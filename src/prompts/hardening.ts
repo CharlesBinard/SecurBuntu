@@ -2,7 +2,7 @@ import * as p from "@clack/prompts"
 import { existsSync, readFileSync } from "fs"
 import pc from "picocolors"
 import { detectDefaultPubKeyPath } from "../ssh/index.ts"
-import type { HardeningOptions, ServerInfo, SshClient } from "../types.ts"
+import type { HardeningOptions, ServerAuditContext, ServerInfo, SshClient } from "../types.ts"
 import { unwrapBoolean, unwrapText } from "./helpers.ts"
 import { promptServiceOptions } from "./services.ts"
 import { promptSshOptions } from "./ssh-options.ts"
@@ -111,7 +111,7 @@ async function promptPasswordAuth(options: HardeningOptions, ssh: SshClient): Pr
 export async function promptHardeningOptions(
   server: ServerInfo,
   ssh: SshClient,
-  detectedServices: string[],
+  auditContext: ServerAuditContext,
 ): Promise<HardeningOptions> {
   const options: HardeningOptions = {
     createSudoUser: false,
@@ -131,9 +131,17 @@ export async function promptHardeningOptions(
     disableServices: false,
     servicesToDisable: [],
     fixFilePermissions: false,
+    currentSshPort: auditContext.currentSshPort,
   }
 
   await promptSudoUser(server, options)
+
+  // Show existing SSH keys on server
+  if (auditContext.sshKeysInfo !== "none found") {
+    p.log.info(pc.dim(`SSH keys on server:\n  ${auditContext.sshKeysInfo.split("\n").join("\n  ")}`))
+  } else {
+    p.log.info(pc.dim("No SSH keys found on this server"))
+  }
 
   const addedKey = await promptPersonalKey(options)
 
@@ -153,16 +161,19 @@ export async function promptHardeningOptions(
     }
   }
 
-  await promptSshOptions(options)
+  await promptSshOptions(options, auditContext.currentSshPort)
   await promptPasswordAuth(options, ssh)
 
-  const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
-  await promptUfwOptions(options, sshPort)
+  const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : auditContext.currentSshPort
+  await promptUfwOptions(options, sshPort, auditContext.ufwActive)
 
   // Fail2ban
+  const fail2banMessage = auditContext.fail2banActive
+    ? "Fail2ban is already active. Do you want to reconfigure it?"
+    : "Do you want to install Fail2ban to protect against brute-force attacks?"
   options.installFail2ban = unwrapBoolean(
     await p.confirm({
-      message: "Do you want to install Fail2ban to protect against brute-force attacks?",
+      message: fail2banMessage,
     }),
   )
 
@@ -174,7 +185,7 @@ export async function promptHardeningOptions(
   )
 
   // Disable unnecessary services
-  await promptServiceOptions(options, detectedServices)
+  await promptServiceOptions(options, auditContext.detectedServices)
 
   // Fix file permissions
   options.fixFilePermissions = unwrapBoolean(
