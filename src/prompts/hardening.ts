@@ -4,6 +4,7 @@ import pc from "picocolors"
 import { detectDefaultPubKeyPath } from "../ssh/index.ts"
 import type { HardeningOptions, ServerInfo, SshClient } from "../types.ts"
 import { unwrapBoolean, unwrapText } from "./helpers.ts"
+import { promptServiceOptions } from "./services.ts"
 import { promptSshOptions } from "./ssh-options.ts"
 import { promptSysctlOptions } from "./sysctl.ts"
 import { promptUfwOptions } from "./ufw.ts"
@@ -107,7 +108,11 @@ async function promptPasswordAuth(options: HardeningOptions, ssh: SshClient): Pr
   }
 }
 
-export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient): Promise<HardeningOptions> {
+export async function promptHardeningOptions(
+  server: ServerInfo,
+  ssh: SshClient,
+  detectedServices: string[],
+): Promise<HardeningOptions> {
   const options: HardeningOptions = {
     createSudoUser: false,
     addPersonalKey: false,
@@ -123,6 +128,9 @@ export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient)
     enableAutoUpdates: false,
     enableSysctl: false,
     enableSshBanner: false,
+    disableServices: false,
+    servicesToDisable: [],
+    fixFilePermissions: false,
   }
 
   await promptSudoUser(server, options)
@@ -162,6 +170,17 @@ export async function promptHardeningOptions(server: ServerInfo, ssh: SshClient)
   options.enableAutoUpdates = unwrapBoolean(
     await p.confirm({
       message: "Do you want to enable automatic security updates (unattended-upgrades)?",
+    }),
+  )
+
+  // Disable unnecessary services
+  await promptServiceOptions(options, detectedServices)
+
+  // Fix file permissions
+  options.fixFilePermissions = unwrapBoolean(
+    await p.confirm({
+      message: "Do you want to fix permissions on sensitive system files?",
+      initialValue: true,
     }),
   )
 
