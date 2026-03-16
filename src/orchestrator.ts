@@ -14,7 +14,7 @@ import {
 import { displayReport, exportAuditMarkdown, exportReportMarkdown } from "./report/index.ts"
 import { detectServerInfo } from "./ssh/index.ts"
 import { executeTasks } from "./tasks/index.ts"
-import type { AuditResult, ConnectionConfig, HardeningOptions, Report, ServerInfo, SshClient } from "./types.ts"
+import type { AuditResult, ConnectionConfig, HardeningOptions, Report, ServerAuditContext, ServerInfo, SshClient } from "./types.ts"
 
 interface RunArgs {
   isDryRun: boolean
@@ -189,10 +189,31 @@ export async function run(args: RunArgs): Promise<void> {
 
     const { updateSuccess, updateMessage } = await runSystemUpdate(ssh, isDryRun, s)
 
+    const portCheck = auditResult.checks.find((c) => c.name === "SSH Port")
+    const portStr = portCheck?.status?.replace(" (default)", "") ?? "22"
+    const currentSshPort = parseInt(portStr, 10) || 22
+
+    const ufwCheck = auditResult.checks.find((c) => c.name === "UFW Firewall")
+    const ufwActive = ufwCheck?.status === "active"
+
+    const f2bCheck = auditResult.checks.find((c) => c.name === "Fail2ban")
+    const fail2banActive = f2bCheck?.status === "active"
+
+    const sshKeysCheck = auditResult.checks.find((c) => c.name === "SSH Keys")
+    const sshKeysInfo = sshKeysCheck?.status ?? "none found"
+
     const servicesCheck = auditResult.checks.find((c) => c.name === "Unnecessary Services")
     const detectedServices = servicesCheck?.detail?.split(", ") ?? []
 
-    const options = await promptHardeningOptions(serverInfo, ssh, detectedServices)
+    const auditContext: ServerAuditContext = {
+      currentSshPort,
+      ufwActive,
+      fail2banActive,
+      sshKeysInfo,
+      detectedServices,
+    }
+
+    const options = await promptHardeningOptions(serverInfo, ssh, auditContext)
 
     const confirmation = await promptConfirmation(connectionConfig.host, options)
     if (!confirmation) {
