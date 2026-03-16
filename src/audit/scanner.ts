@@ -1,6 +1,6 @@
-import type { AuditResult, SshClient } from "../types.ts"
 import { checkPermissions } from "../tasks/permissions.ts"
 import { UNNECESSARY_SERVICES } from "../tasks/services.ts"
+import type { AuditResult, SshClient } from "../types.ts"
 
 export async function runAudit(ssh: SshClient): Promise<AuditResult> {
   const checks: AuditResult["checks"] = []
@@ -65,9 +65,9 @@ export async function runAudit(ssh: SshClient): Promise<AuditResult> {
   // Unnecessary services
   const servicesResult = await ssh.exec("systemctl list-units --type=service --state=active --no-legend")
   const activeServices = servicesResult.stdout
-  const detectedServices = UNNECESSARY_SERVICES
-    .filter((s) => activeServices.includes(`${s.name}.service`))
-    .map((s) => s.name)
+  const detectedServices = UNNECESSARY_SERVICES.filter((s) => activeServices.includes(`${s.name}.service`)).map(
+    (s) => s.name,
+  )
   if (detectedServices.length > 0) {
     checks.push({ name: "Unnecessary Services", status: "found", detail: detectedServices.join(", ") })
   } else {
@@ -77,9 +77,7 @@ export async function runAudit(ssh: SshClient): Promise<AuditResult> {
   // File permissions
   const violations = await checkPermissions(ssh)
   if (violations.length > 0) {
-    const detail = violations
-      .map((v) => `${v.path} ${v.actual.mode} (expected ${v.expected.mode})`)
-      .join(", ")
+    const detail = violations.map((v) => `${v.path} ${v.actual.mode} (expected ${v.expected.mode})`).join(", ")
     checks.push({ name: "File Permissions", status: "non-conforming", detail })
   } else {
     checks.push({ name: "File Permissions", status: "all correct" })

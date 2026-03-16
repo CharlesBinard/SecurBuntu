@@ -1,20 +1,15 @@
 import * as p from "@clack/prompts"
-import type { HardeningOptions } from "../types.ts"
 import { UNNECESSARY_SERVICES } from "../tasks/services.ts"
+import type { HardeningOptions } from "../types.ts"
 import { unwrapStringArray } from "./helpers.ts"
 
-export async function promptServiceOptions(
-  options: HardeningOptions,
-  detectedServices: string[],
-): Promise<void> {
+export async function promptServiceOptions(options: HardeningOptions, detectedServices: string[]): Promise<void> {
   if (detectedServices.length === 0) return
 
-  const choices = UNNECESSARY_SERVICES
-    .filter((s) => detectedServices.includes(s.name))
-    .map((s) => ({
-      value: s.name,
-      label: `${s.name} — ${s.description}`,
-    }))
+  const choices = UNNECESSARY_SERVICES.filter((s) => detectedServices.includes(s.name)).map((s) => ({
+    value: s.name,
+    label: `${s.name} — ${s.description}`,
+  }))
 
   const selected = unwrapStringArray(
     await p.multiselect({

@@ -120,7 +120,8 @@ describe("runAudit", () => {
   test("detects unnecessary services", async () => {
     const ssh = new MockSshClient()
     ssh.onExec("systemctl list-units --type=service --state=active", {
-      stdout: "cups.service loaded active running CUPS Scheduler\navahi-daemon.service loaded active running Avahi mDNS",
+      stdout:
+        "cups.service loaded active running CUPS Scheduler\navahi-daemon.service loaded active running Avahi mDNS",
     })
     const result = await runAudit(ssh)
     const check = result.checks.find((c) => c.name === "Unnecessary Services")
