@@ -121,7 +121,19 @@ async function main(): Promise<void> {
         }
 
         connectionConfig.sudoPassword = sudoPw
-        continue // retry connection with sudo password
+
+        // Retry connection with sudo password (same credentials)
+        s.start(`Reconnecting to ${connectionConfig.host}...`)
+        try {
+          ssh = await connect(connectionConfig)
+          s.stop(`Connected to ${pc.green(connectionConfig.host)}`)
+          break
+        } catch (retryError) {
+          const retryMsg = retryError instanceof Error ? retryError.message : "Unknown error"
+          s.stop(pc.red(`Connection failed: ${retryMsg}`))
+          log.info(pc.cyan("Let's try again.\n"))
+          continue
+        }
       }
 
       s.stop(pc.red(`Connection failed: ${msg}`))
