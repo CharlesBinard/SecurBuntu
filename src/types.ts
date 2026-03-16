@@ -5,6 +5,7 @@ export interface ConnectionConfig {
   authMethod: "key" | "password" | "copy"
   privateKeyPath?: string
   password?: string
+  sudoPassword?: string
   controlPath: string
 }
 

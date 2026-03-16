@@ -315,36 +315,55 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
   const rootUser = whoamiResult.stdout === "root"
 
   // Validate sudo access for non-root users
+  let sudoPassword: string | undefined
   if (!rootUser) {
     const sudoCheck = await spawnSsh([...execArgs, "sudo -n true 2>&1"])
     if (sudoCheck.exitCode !== 0) {
-      cleanup()
-      throw new Error(
-        "Non-root user does not have passwordless sudo access. " +
-        "Please connect as root or configure NOPASSWD sudo for this user."
+      if (!config.sudoPassword) {
+        cleanup()
+        throw new Error("SUDO_PASSWORD_REQUIRED")
+      }
+
+      // Try with password
+      const sudoCheckWithPw = await spawnSsh(
+        [...execArgs, "sudo -S -p '' true 2>&1"],
+        config.sudoPassword + "\n",
       )
+      if (sudoCheckWithPw.exitCode !== 0) {
+        cleanup()
+        throw new Error("Invalid sudo password or user is not in sudoers.")
+      }
+
+      sudoPassword = config.sudoPassword
     }
   }
 
   function prefixSudo(command: string): string {
-    return rootUser ? command : `sudo -n ${command}`
+    if (rootUser) return command
+    if (sudoPassword) return `sudo -S -p '' ${command}`
+    return `sudo -n ${command}`
+  }
+
+  function sudoStdin(data?: string): string | undefined {
+    if (!sudoPassword || rootUser) return data
+    return data !== undefined ? sudoPassword + "\n" + data : sudoPassword + "\n"
   }
 
   const client: SshClient = {
     isRoot: rootUser,
 
     async exec(command: string, options?: ExecOptions): Promise<CommandResult> {
-      return spawnSsh([...execArgs, prefixSudo(command)], undefined, options?.timeout)
+      return spawnSsh([...execArgs, prefixSudo(command)], sudoStdin(), options?.timeout)
     },
 
     async execWithStdin(command: string, stdin: string, options?: ExecOptions): Promise<CommandResult> {
-      return spawnSsh([...execArgs, prefixSudo(command)], stdin, options?.timeout)
+      return spawnSsh([...execArgs, prefixSudo(command)], sudoStdin(stdin), options?.timeout)
     },
 
     async writeFile(remotePath: string, content: string): Promise<void> {
       const result = await spawnSsh(
         [...execArgs, prefixSudo(`tee '${remotePath}' > /dev/null`)],
-        content,
+        sudoStdin(content),
       )
       if (result.exitCode !== 0) {
         throw new Error(`Failed to write ${remotePath}: ${result.stderr}`)
@@ -352,7 +371,7 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
     },
 
     async readFile(remotePath: string): Promise<string> {
-      const result = await spawnSsh([...execArgs, prefixSudo(`cat '${remotePath}'`)])
+      const result = await spawnSsh([...execArgs, prefixSudo(`cat '${remotePath}'`)], sudoStdin())
       if (result.exitCode !== 0) {
         throw new Error(`Failed to read ${remotePath}: ${result.stderr}`)
       }
@@ -360,7 +379,7 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
     },
 
     async fileExists(remotePath: string): Promise<boolean> {
-      const result = await spawnSsh([...execArgs, prefixSudo(`test -f '${remotePath}' && echo yes`)])
+      const result = await spawnSsh([...execArgs, prefixSudo(`test -f '${remotePath}' && echo yes`)], sudoStdin())
       return result.stdout === "yes"
     },
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { existsSync } from "fs"
-import { outro, log, spinner, confirm, isCancel } from "@clack/prompts"
+import { outro, log, spinner, confirm, isCancel, password as passwordPrompt } from "@clack/prompts"
 import pc from "picocolors"
 import { showBanner, initVersion } from "./ui.js"
 import { connect, detectServerInfo, fetchHostKeyFingerprint, addToKnownHosts, copyKeyToServer, checkSshCopyIdInstalled } from "./ssh.js"
@@ -100,6 +100,30 @@ async function main(): Promise<void> {
       break
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error"
+
+      // Non-root user without NOPASSWD sudo — ask for sudo password
+      if (msg === "SUDO_PASSWORD_REQUIRED") {
+        s.stop(pc.yellow("Sudo password required"))
+        log.warning(
+          `${pc.bold("User does not have passwordless sudo.")}\n` +
+          `  ${pc.dim("For better security, consider configuring NOPASSWD sudo for this user.")}`
+        )
+
+        const sudoPw = await passwordPrompt({
+          message: "Enter the sudo password",
+          validate(value) {
+            if (!value) return "Password is required"
+          },
+        })
+        if (isCancel(sudoPw)) {
+          log.info(pc.cyan("Let's try again.\n"))
+          continue
+        }
+
+        connectionConfig.sudoPassword = sudoPw
+        continue // retry connection with sudo password
+      }
+
       s.stop(pc.red(`Connection failed: ${msg}`))
 
       // Entry Point 2: auto-propose key copy on "Permission denied (publickey)"
