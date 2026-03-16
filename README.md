@@ -1,192 +1,201 @@
 <div align="center">
 
-```
-   ____                       ____              _
-  / ___|  ___  ___ _   _ _ __| __ ) _   _ _ __ | |_ _   _
-  \___ \ / _ \/ __| | | | '__|  _ \| | | | '_ \| __| | | |
-   ___) |  __/ (__| |_| | |  | |_) | |_| | | | | |_| |_| |
-  |____/ \___|\___|\__,_|_|  |____/ \__,_|_| |_|\__|\__,_|
-```
+<br>
 
-**Harden your Ubuntu server in minutes, not hours.**
+<img src="https://img.shields.io/badge/SecurBuntu-000000?style=for-the-badge&logoColor=white" alt="SecurBuntu" height="40">
 
-[![Bun](https://img.shields.io/badge/runtime-Bun-f9a8d4?style=for-the-badge&logo=bun&logoColor=white)](https://bun.sh)
-[![TypeScript](https://img.shields.io/badge/lang-TypeScript-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![Ubuntu](https://img.shields.io/badge/target-Ubuntu_22.04+-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com)
-[![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](#license)
+<br><br>
+
+### Harden your Ubuntu server in minutes, not hours.
+
+An interactive CLI that connects via SSH and walks you through a complete security hardening.<br>No Ansible. No YAML. No headaches.
+
+<br>
+
 [![CI](https://github.com/CharlesBinard/SecurBuntu/actions/workflows/ci.yml/badge.svg)](https://github.com/CharlesBinard/SecurBuntu/actions/workflows/ci.yml)
 [![Coverage](https://coveralls.io/repos/github/CharlesBinard/SecurBuntu/badge.svg?branch=main)](https://coveralls.io/github/CharlesBinard/SecurBuntu?branch=main)
-
----
-
-An interactive CLI that connects to your Ubuntu server via SSH and walks you through a complete security hardening — from creating a sudo user to locking down the kernel. No Ansible, no YAML, no headaches.
+[![Bun](https://img.shields.io/badge/Bun-f9a8d4?logo=bun&logoColor=white)](https://bun.sh)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu_22.04+-E95420?logo=ubuntu&logoColor=white)](https://ubuntu.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 </div>
 
+<br>
+
+## What it does
+
+> Connect &rarr; Audit &rarr; Choose &rarr; Harden &rarr; Report
+
+```
+ SSH in ──> Security Scan ──> Interactive Prompts ──> Execute Tasks ──> Before/After Diff
+```
+
+SecurBuntu scans your server's security posture, lets you pick what to fix through a guided questionnaire, applies the changes, and shows you a before/after comparison.
+
+<br>
+
 ## Features
 
-| | Feature | What it does |
-|---|---------|-------------|
-| :bust_in_silhouette: | **Sudo user creation** | Create a dedicated non-root user with sudo privileges |
-| :key: | **SSH key injection** | Deploy your public key + optional Coolify root access |
-| :lock: | **SSH hardening** | Custom port, disable root/password login, MaxAuthTries, X11, banner |
-| :shield: | **UFW firewall** | Install & configure with preset + custom port rules |
-| :cop: | **Fail2ban** | Brute-force protection with auto-configured jails |
-| :arrows_counterclockwise: | **Auto-updates** | Unattended security upgrades via `apt` |
-| :gear: | **Kernel hardening** | Sysctl tweaks: SYN flood, ICMP, source routing, forwarding |
-| :no_entry_sign: | **Disable services** | Detect & disable unnecessary services (cups, avahi, snapd, etc.) |
-| :file_folder: | **File permissions** | Audit & fix permissions on sensitive system files (/etc/shadow, sshd_config, etc.) |
-| :mag: | **Security audit** | Before & after scan with visual diff of what changed |
-| :test_tube: | **Dry-run mode** | Preview every command without touching the server |
-| :page_facing_up: | **Reports & logs** | Export Markdown reports and full command logs |
+| | Feature | Description |
+|:--:|---------|-------------|
+| **1** | **Sudo user** | Create a dedicated non-root user with sudo privileges |
+| **2** | **SSH keys** | Auto-detect local keys, deploy to server, optional Coolify root access |
+| **3** | **SSH hardening** | Custom port, disable root/password login, MaxAuthTries, X11, banner |
+| **4** | **UFW firewall** | Install & configure with preset + custom port rules |
+| **5** | **Fail2ban** | Brute-force protection with auto-configured jails |
+| **6** | **Auto-updates** | Unattended security upgrades via `apt` |
+| **7** | **Disable services** | Detect & remove unnecessary services (cups, avahi, snapd...) |
+| **8** | **File permissions** | Audit & fix permissions on /etc/shadow, sshd_config, crontab... |
+| **9** | **Kernel hardening** | Sysctl tweaks: SYN flood, ICMP, source routing, forwarding |
+| **10** | **Security audit** | Before & after scan with visual diff of what changed |
+| **11** | **Dry-run mode** | Preview every command without touching the server |
+| **12** | **Reports** | Export Markdown reports and full command logs |
 
-## Quick Start
+<br>
+
+## Quick start
 
 ```bash
-# Install dependencies
 bun install
-
-# Run SecurBuntu
 bun src/index.ts
 ```
 
-That's it. The interactive wizard handles the rest.
+The interactive wizard handles the rest.
 
-## CLI Options
+<br>
+
+## Usage
 
 ```
 Usage: bun src/index.ts [options]
 
 Options:
-  --audit     Run security audit only (no hardening)
-  --dry-run   Preview changes without applying them
-  --log       Automatically save execution log
-  -h, --help  Show this help message
+  --audit     Security audit only (no changes)
+  --dry-run   Preview changes without applying
+  --log       Auto-save execution log
+  -h, --help  Show help
 ```
-
-### Examples
 
 ```bash
-# Full interactive hardening
-bun src/index.ts
-
-# Just scan — see what needs fixing
-bun src/index.ts --audit
-
-# Preview what would happen (safe to run anytime)
-bun src/index.ts --dry-run
-
-# Harden + auto-save the command log
-bun src/index.ts --log
+bun src/index.ts              # Full interactive hardening
+bun src/index.ts --audit      # Just scan
+bun src/index.ts --dry-run    # Preview mode
+bun src/index.ts --log        # Harden + save log
 ```
 
-## How It Works
+<br>
+
+## How it works
 
 ```
-┌─────────────┐    ┌──────────────┐    ┌────────────────┐    ┌──────────────┐
-│  Connect     │───>│  Audit       │───>│  Questionnaire  │───>│  Execute     │
-│  via SSH     │    │  (before)    │    │  (pick options) │    │  tasks       │
-└─────────────┘    └──────────────┘    └────────────────┘    └──────┬───────┘
-                                                                    │
-                   ┌──────────────┐    ┌────────────────┐           │
-                   │  Export      │<───│  Audit         │<──────────┘
-                   │  report/log  │    │  (after)       │
-                   └──────────────┘    └────────────────┘
+  1. Connect         2. Audit            3. Choose           4. Execute
+ ┌──────────┐     ┌──────────┐      ┌──────────────┐     ┌──────────┐
+ │  SSH in   │────>│  Scan    │─────>│  Interactive  │────>│  Apply   │
+ │  (key/pw) │     │  server  │      │  prompts     │     │  tasks   │
+ └──────────┘     └──────────┘      └──────────────┘     └─────┬────┘
+                                                               │
+                    5. Report           6. Compare             │
+                  ┌──────────┐      ┌──────────────┐          │
+                  │  Export   │<────│  Before/After │<─────────┘
+                  │  MD/log   │     │  audit diff   │
+                  └──────────┘     └──────────────┘
 ```
 
-1. **Connect** — SSH into your server (key, password, or copy-key auth)
-2. **Audit** — Scan current security posture
-3. **Choose** — Pick what to harden via interactive prompts
-4. **Preview or Apply** — Simulate first or go live
-5. **Audit again** — See the before/after diff
-6. **Report** — Get a summary + optional Markdown export
+<br>
+
+## Context-aware prompts
+
+SecurBuntu reads the server state before asking questions:
+
+- Detects the **current SSH port** and uses it everywhere (prompts, Fail2ban, UFW, summary)
+- Shows **"already active"** for UFW/Fail2ban instead of asking to install
+- Lists **existing SSH keys** on the server before asking to add one
+- Auto-detects **local SSH keys** (~/.ssh/) and lets you pick from a list
+
+<br>
 
 ## Authentication
 
-SecurBuntu supports three ways to connect:
-
 | Method | Description |
-|--------|-------------|
-| **SSH Key** | Uses your existing key pair (recommended) |
+|:------:|-------------|
+| **SSH Key** | Auto-detects local keys, select from list (recommended) |
 | **Password** | Authenticates with `sshpass` |
-| **Copy Key** | Deploys your key via `ssh-copy-id`, then connects with it |
+| **Copy Key** | Deploys your key via `ssh-copy-id`, then connects |
 
-It also handles non-root users with sudo password prompts, and verifies host key fingerprints before connecting.
+Handles non-root users with sudo password prompts. Verifies host key fingerprints before connecting.
+
+<br>
+
+## Safety
+
+- **Host key verification** before any connection
+- **SSH config rollback** if `sshd -t` validation fails
+- **Lockout prevention** won't disable password auth without a key in place
+- **Input validation** shell injection prevention, port range checks
+- **Dry-run mode** preview everything before committing
+- **Stop-on-failure** choose to continue or abort when a task fails
+
+<br>
 
 ## Requirements
 
 - [Bun](https://bun.sh) v1.0+
-- A target server running **Ubuntu 22.04** or later
-- SSH access to the server (root or sudo user)
+- Target server: **Ubuntu 22.04+**
+- SSH access (root or sudo user)
 
-Optional (for password-based auth):
-- `sshpass` — `brew install sshpass` / `apt install sshpass`
-- `ssh-copy-id` — usually included with OpenSSH
+Optional: `sshpass` (for password auth), `ssh-copy-id` (for key copy)
 
-## Project Structure
-
-```
-src/
-├── index.ts            # Entry point
-├── orchestrator.ts     # Main flow orchestrator
-├── types.ts            # TypeScript interfaces
-├── logging.ts          # Command logging wrapper
-├── dry-run.ts          # Dry-run simulation wrapper
-├── audit/
-│   ├── scanner.ts      # Security audit checks
-│   └── display.ts      # Audit result formatting
-├── cli/
-│   ├── args.ts         # CLI argument parsing
-│   └── ui.ts           # Banner & version
-├── connection/         # SSH connection & retry logic
-├── prompts/
-│   ├── hardening.ts    # Main hardening questionnaire
-│   ├── services.ts     # Unnecessary services prompt
-│   ├── sysctl.ts       # Kernel parameters prompt
-│   ├── ufw.ts          # Firewall rules prompt
-│   └── confirmation.ts # Summary & confirmation
-├── report/             # Report display & Markdown export
-├── ssh/                # SSH connection, key detection, host keys
-└── tasks/
-    ├── index.ts        # Task runner with stop-on-failure
-    ├── user.ts         # Create sudo user
-    ├── ssh-keys.ts     # SSH key injection
-    ├── ssh-config.ts   # SSH hardening + rollback
-    ├── ufw.ts          # UFW firewall setup
-    ├── fail2ban.ts     # Fail2ban configuration
-    ├── unattended.ts   # Automatic updates
-    ├── services.ts     # Disable unnecessary services
-    ├── permissions.ts  # Fix file permissions
-    └── sysctl.ts       # Kernel parameter hardening
-```
+<br>
 
 ## Testing
 
 ```bash
-bun test
+bun test             # 156 tests
+bun test --coverage  # With coverage report
+bun run check        # Lint + type check
 ```
 
-151 tests covering audit, tasks, dry-run, logging, and reporting.
+<br>
 
-## Safety First
+## Project structure
 
-SecurBuntu is built with safety in mind:
+```
+src/
+├── index.ts              # Entry point
+├── orchestrator.ts       # Main flow
+├── types.ts              # Interfaces
+├── audit/                # Security scanner + display
+├── cli/                  # Args parsing + banner
+├── connection/           # SSH connection + retry
+├── prompts/              # Interactive questionnaire
+│   ├── hardening.ts      #   Main flow
+│   ├── connection.ts     #   SSH key selection
+│   ├── services.ts       #   Service disabling
+│   ├── ufw.ts            #   Firewall rules
+│   └── confirmation.ts   #   Summary + confirm
+├── report/               # Display + Markdown export
+├── ssh/                  # Connection, keys, host verification
+└── tasks/                # Hardening tasks
+    ├── user.ts           #   Sudo user
+    ├── ssh-keys.ts       #   Key injection
+    ├── ssh-config.ts     #   SSH hardening + rollback
+    ├── ufw.ts            #   Firewall
+    ├── fail2ban.ts       #   Brute-force protection
+    ├── unattended.ts     #   Auto-updates
+    ├── services.ts       #   Disable services
+    ├── permissions.ts    #   File permissions
+    └── sysctl.ts         #   Kernel hardening
+```
 
-- **Host key verification** — fingerprint check before any connection
-- **SSH config rollback** — if `sshd -t` validation fails, changes are automatically reverted
-- **Lockout prevention** — won't let you disable password auth without a key in place
-- **Input validation** — shell injection prevention, port range checks, username format validation
-- **Dry-run mode** — preview everything before committing
-- **Stop-on-failure** — choose to continue or abort when a task fails
+<br>
 
 ## License
 
-MIT
+[MIT](LICENSE)
 
----
+<br>
 
 <div align="center">
-
-Built with :purple_heart: and [Bun](https://bun.sh)
-
+<sub>Built with <a href="https://bun.sh">Bun</a> + TypeScript</sub>
 </div>
