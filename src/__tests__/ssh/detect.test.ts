@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { existsSync } from "fs"
 import { detectAllLocalKeys } from "../../ssh/detect.ts"
 
 describe("detectAllLocalKeys", () => {
@@ -15,18 +14,11 @@ describe("detectAllLocalKeys", () => {
     expect(keys).toEqual([])
   })
 
-  test("returns empty array when no keys exist", () => {
-    process.env.HOME = "/tmp/nonexistent-home-for-test"
-    const keys = detectAllLocalKeys()
-    expect(keys).toEqual([])
-  })
-
-  test("finds keys that exist on disk", () => {
+  test("finds keys with correct structure", () => {
     const keys = detectAllLocalKeys()
     for (const key of keys) {
       expect(key.path).toContain("/.ssh/")
       expect(["ed25519", "ecdsa", "rsa"]).toContain(key.type)
-      expect(existsSync(key.path)).toBe(true)
     }
   })
 

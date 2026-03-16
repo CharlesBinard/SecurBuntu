@@ -40,6 +40,7 @@ const defaultOptions: HardeningOptions = {
   disableServices: false,
   servicesToDisable: [],
   fixFilePermissions: false,
+  currentSshPort: 22,
 }
 
 const defaultServer: ServerInfo = {
