@@ -60,11 +60,18 @@ Update call: `promptHardeningOptions(serverInfo, ssh, auditContext)`
 
 **`src/prompts/ssh-options.ts`** — Accept `currentSshPort: number` parameter. Change message from `"Do you want to change the default SSH port (22)?"` to `"Do you want to change the SSH port? (currently ${currentSshPort})"`. When user doesn't change the port, the `options.changeSshPort` stays false and the current port is preserved downstream.
 
-**`src/prompts/confirmation.ts`** — Accept `currentSshPort: number`. In `buildSummaryLines`, compute SSH port as:
+**`src/prompts/confirmation.ts`** — No signature change needed since `currentSshPort` is in `HardeningOptions`. In `buildSummaryLines`, replace the SSH port line:
+
+Before:
 ```ts
-const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : currentSshPort
+lines.push(`  SSH port: ${options.changeSshPort ? pc.yellow(String(sshPort)) : pc.dim("22 (default)")}`)
 ```
-Display the port correctly: if unchanged, show the current port without "(default)".
+
+After:
+```ts
+const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : options.currentSshPort
+lines.push(`  SSH port: ${options.changeSshPort ? pc.yellow(String(sshPort)) : pc.dim(String(options.currentSshPort))}`)
+```
 
 **`src/tasks/ssh-config.ts`** — Add `currentSshPort` to `HardeningOptions` (or pass via `ServerInfo`). Compute port as `options.changeSshPort && options.newSshPort ? options.newSshPort : currentSshPort` instead of falling back to 22.
 
@@ -128,6 +135,7 @@ export interface LocalSshKey {
 
 export function detectAllLocalKeys(): LocalSshKey[] {
   const home = process.env.HOME ?? ""
+  if (!home) return []
   const sshDir = `${home}/.ssh`
   const patterns: Array<{ filename: string; type: string }> = [
     { filename: "id_ed25519", type: "ed25519" },
@@ -182,6 +190,32 @@ if (localKeys.length > 0) {
 
 **`src/ssh/index.ts`** — Re-export `detectAllLocalKeys` and `LocalSshKey`.
 
+## Report logic
+
+The `Report` type and report display/export remain unchanged. `report.newSshPort` is only set when `options.changeSshPort` is true (the user explicitly changed the port). This is already correct in the orchestrator and does not need modification.
+
+## Test plan
+
+### New tests to add
+
+**`src/__tests__/ssh/detect.test.ts`** (new file):
+- `detectAllLocalKeys` returns empty array when HOME is unset
+- `detectAllLocalKeys` returns empty array when no keys exist
+- `detectAllLocalKeys` finds a single ed25519 key
+- `detectAllLocalKeys` finds multiple keys in priority order
+
+**`src/__tests__/tasks/fail2ban.test.ts`** — add:
+- Uses `currentSshPort` from options instead of defaulting to 22
+- Falls back correctly when `changeSshPort` is true with `newSshPort`
+
+**`src/__tests__/tasks/ssh-config.test.ts`** — add:
+- Uses `currentSshPort` from options when port is not changed
+- Uses `newSshPort` when `changeSshPort` is true
+
+### Existing tests to update
+
+All `defaultOptions` objects in `src/__tests__/tasks/*.test.ts` need `currentSshPort: 22` added.
+
 ## Files to modify
 
 - `src/types.ts` — add `ServerAuditContext` interface, add `currentSshPort` to `HardeningOptions`
@@ -189,12 +223,13 @@ if (localKeys.length > 0) {
 - `src/prompts/hardening.ts` — accept `ServerAuditContext`, propagate to sub-prompts, show SSH keys info, adapt Fail2ban wording
 - `src/prompts/ssh-options.ts` — accept and display `currentSshPort`
 - `src/prompts/ufw.ts` — accept `ufwActive`, adapt wording
-- `src/prompts/confirmation.ts` — accept `currentSshPort`, fix summary port display
+- `src/prompts/confirmation.ts` — read `currentSshPort` from `options`, fix summary port display
 - `src/prompts/connection.ts` — list local SSH keys for selection
 - `src/ssh/detect.ts` — add `detectAllLocalKeys()` and `LocalSshKey`
 - `src/ssh/index.ts` — re-export new function and type
 - `src/tasks/ssh-config.ts` — use `currentSshPort` instead of 22 fallback
 - `src/tasks/fail2ban.ts` — use `currentSshPort` instead of 22 fallback
+- `src/__tests__/ssh/detect.test.ts` — new tests for `detectAllLocalKeys`
 - `src/__tests__/tasks/ssh-config.test.ts` — update tests for new port behavior
 - `src/__tests__/tasks/fail2ban.test.ts` — update tests for new port behavior
 - `src/__tests__/tasks/*.test.ts` — add `currentSshPort` to `defaultOptions`
