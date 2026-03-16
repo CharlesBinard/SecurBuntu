@@ -34,6 +34,8 @@ An interactive CLI that connects to your Ubuntu server via SSH and walks you thr
 | :cop: | **Fail2ban** | Brute-force protection with auto-configured jails |
 | :arrows_counterclockwise: | **Auto-updates** | Unattended security upgrades via `apt` |
 | :gear: | **Kernel hardening** | Sysctl tweaks: SYN flood, ICMP, source routing, forwarding |
+| :no_entry_sign: | **Disable services** | Detect & disable unnecessary services (cups, avahi, snapd, etc.) |
+| :file_folder: | **File permissions** | Audit & fix permissions on sensitive system files (/etc/shadow, sshd_config, etc.) |
 | :mag: | **Security audit** | Before & after scan with visual diff of what changed |
 | :test_tube: | **Dry-run mode** | Preview every command without touching the server |
 | :page_facing_up: | **Reports & logs** | Export Markdown reports and full command logs |
@@ -125,24 +127,37 @@ Optional (for password-based auth):
 
 ```
 src/
-├── index.ts          # Main orchestrator
-├── ssh.ts            # SSH connection (ControlMaster-based)
-├── prompts.ts        # Interactive questionnaire
-├── audit.ts          # Security audit scanner
-├── report.ts         # Report display & Markdown export
-├── logging.ts        # Command logging wrapper
-├── dry-run.ts        # Dry-run simulation wrapper
-├── ui.ts             # Banner & version
-├── types.ts          # TypeScript interfaces
+├── index.ts            # Entry point
+├── orchestrator.ts     # Main flow orchestrator
+├── types.ts            # TypeScript interfaces
+├── logging.ts          # Command logging wrapper
+├── dry-run.ts          # Dry-run simulation wrapper
+├── audit/
+│   ├── scanner.ts      # Security audit checks
+│   └── display.ts      # Audit result formatting
+├── cli/
+│   ├── args.ts         # CLI argument parsing
+│   └── ui.ts           # Banner & version
+├── connection/         # SSH connection & retry logic
+├── prompts/
+│   ├── hardening.ts    # Main hardening questionnaire
+│   ├── services.ts     # Unnecessary services prompt
+│   ├── sysctl.ts       # Kernel parameters prompt
+│   ├── ufw.ts          # Firewall rules prompt
+│   └── confirmation.ts # Summary & confirmation
+├── report/             # Report display & Markdown export
+├── ssh/                # SSH connection, key detection, host keys
 └── tasks/
-    ├── index.ts      # Task runner with stop-on-failure
-    ├── user.ts       # Create sudo user
-    ├── ssh-keys.ts   # SSH key injection
-    ├── ssh-config.ts # SSH hardening + rollback
-    ├── ufw.ts        # UFW firewall setup
-    ├── fail2ban.ts   # Fail2ban configuration
-    ├── unattended.ts # Automatic updates
-    └── sysctl.ts     # Kernel parameter hardening
+    ├── index.ts        # Task runner with stop-on-failure
+    ├── user.ts         # Create sudo user
+    ├── ssh-keys.ts     # SSH key injection
+    ├── ssh-config.ts   # SSH hardening + rollback
+    ├── ufw.ts          # UFW firewall setup
+    ├── fail2ban.ts     # Fail2ban configuration
+    ├── unattended.ts   # Automatic updates
+    ├── services.ts     # Disable unnecessary services
+    ├── permissions.ts  # Fix file permissions
+    └── sysctl.ts       # Kernel parameter hardening
 ```
 
 ## Testing
@@ -151,7 +166,7 @@ src/
 bun test
 ```
 
-95 tests covering audit, tasks, dry-run, logging, and reporting.
+151 tests covering audit, tasks, dry-run, logging, and reporting.
 
 ## Safety First
 
