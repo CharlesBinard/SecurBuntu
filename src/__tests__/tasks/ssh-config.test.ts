@@ -18,6 +18,9 @@ const defaultOptions: HardeningOptions = {
   disableX11Forwarding: false,
   maxAuthTries: 6,
   enableSshBanner: false,
+  disableServices: false,
+  servicesToDisable: [],
+  fixFilePermissions: false,
 }
 
 const defaultServer: ServerInfo = {
