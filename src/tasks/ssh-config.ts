@@ -67,7 +67,7 @@ export const runHardenSshConfig: HardeningTask = async (ssh, options, server) =>
     }
   }
 
-  const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
+  const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : options.currentSshPort
   const date = new Date().toISOString().split("T")[0] ?? "unknown"
 
   // Write SSH banner if requested
