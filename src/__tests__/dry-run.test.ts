@@ -1,18 +1,21 @@
-import { mock as bunMock, describe, expect, test } from "bun:test"
+import { afterEach, mock as bunMock, describe, expect, test } from "bun:test"
 import { MockSshClient } from "./helpers/mock-ssh.ts"
+
+let logInfoCalls: string[] = []
+let noteCalls: { message: string; title: string }[] = []
 
 // Mock @clack/prompts (hoisted before imports by Bun)
 bunMock.module("@clack/prompts", () => ({
   log: {
-    info: () => {
-      /* noop */
+    info: (msg: string) => {
+      logInfoCalls.push(msg)
     },
     warning: () => {
       /* noop */
     },
   },
-  note: () => {
-    /* noop */
+  note: (message: string, title: string) => {
+    noteCalls.push({ message, title })
   },
   isCancel: () => false,
 }))
@@ -96,5 +99,42 @@ describe("DryRunSshClient", () => {
     const ssh = new MockSshClient()
     const dryRun = new DryRunSshClient(ssh)
     dryRun.close() // should not throw
+  })
+})
+
+describe("DryRunSshClient.displaySummary", () => {
+  afterEach(() => {
+    logInfoCalls = []
+    noteCalls = []
+  })
+
+  test("logs message when no commands were recorded", () => {
+    const ssh = new MockSshClient()
+    const dryRun = new DryRunSshClient(ssh)
+
+    dryRun.displaySummary()
+
+    expect(logInfoCalls.length).toBeGreaterThan(0)
+    const combined = logInfoCalls.join(" ")
+    expect(combined).toContain("No commands would be executed")
+    expect(noteCalls).toHaveLength(0)
+  })
+
+  test("displays numbered command list via note when commands exist", async () => {
+    const ssh = new MockSshClient()
+    const dryRun = new DryRunSshClient(ssh)
+
+    await dryRun.exec("apt update")
+    await dryRun.exec("systemctl restart sshd")
+
+    logInfoCalls = []
+    noteCalls = []
+
+    dryRun.displaySummary()
+
+    expect(noteCalls).toHaveLength(1)
+    expect(noteCalls[0].message).toContain("1. apt update")
+    expect(noteCalls[0].message).toContain("2. systemctl restart sshd")
+    expect(noteCalls[0].title).toContain("Dry-run summary")
   })
 })
