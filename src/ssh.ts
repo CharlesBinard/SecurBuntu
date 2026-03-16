@@ -2,6 +2,10 @@ import { createHash } from "crypto"
 import { existsSync, appendFileSync, mkdirSync } from "fs"
 import type { ConnectionConfig, CommandResult, ExecOptions, ServerInfo, SshClient } from "./types.js"
 
+function shellEscape(s: string): string {
+  return "'" + s.replace(/'/g, "'\\''") + "'"
+}
+
 function hashControlPath(user: string, host: string, port: number): string {
   const hash = createHash("sha256")
     .update(`${user}@${host}:${port}`)
@@ -340,7 +344,7 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
 
   function prefixSudo(command: string): string {
     if (rootUser) return command
-    if (sudoPassword) return `sudo -S -p '' ${command}`
+    if (sudoPassword) return `sudo -S -p '' bash -c ${shellEscape(command)}`
     return `sudo -n ${command}`
   }
 
