@@ -2,6 +2,8 @@ import * as p from "@clack/prompts"
 import pc from "picocolors"
 import type { HardeningOptions, ServerInfo, SshClient, TaskResult } from "../types.ts"
 import { runConfigureFail2ban } from "./fail2ban.ts"
+import { runFixPermissions } from "./permissions.ts"
+import { runDisableServices } from "./services.ts"
 import { runHardenSshConfig } from "./ssh-config.ts"
 import { runInjectSshKeys } from "./ssh-keys.ts"
 import { runConfigureSysctl } from "./sysctl.ts"
@@ -21,6 +23,8 @@ const TASKS: TaskEntry[] = [
   { label: "Configuring UFW firewall", run: runConfigureUfw },
   { label: "Configuring Fail2ban", run: runConfigureFail2ban },
   { label: "Configuring automatic updates", run: runConfigureUnattended },
+  { label: "Disabling unnecessary services", run: runDisableServices },
+  { label: "Fixing file permissions", run: runFixPermissions },
   { label: "Applying kernel hardening", run: runConfigureSysctl },
   { label: "Hardening SSH configuration", run: runHardenSshConfig },
 ]
