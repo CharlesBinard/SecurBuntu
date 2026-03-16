@@ -1,12 +1,12 @@
 import * as p from "@clack/prompts"
 import { existsSync, readFileSync } from "fs"
 import pc from "picocolors"
-import { detectDefaultPubKeyPath } from "../ssh/index.js"
-import type { HardeningOptions, ServerInfo, SshClient } from "../types.js"
-import { unwrapBoolean, unwrapText } from "./helpers.js"
-import { promptSshOptions } from "./ssh-options.js"
-import { promptSysctlOptions } from "./sysctl.js"
-import { promptUfwOptions } from "./ufw.js"
+import { detectDefaultPubKeyPath } from "../ssh/index.ts"
+import type { HardeningOptions, ServerInfo, SshClient } from "../types.ts"
+import { unwrapBoolean, unwrapText } from "./helpers.ts"
+import { promptSshOptions } from "./ssh-options.ts"
+import { promptSysctlOptions } from "./sysctl.ts"
+import { promptUfwOptions } from "./ufw.ts"
 
 async function promptSudoUser(server: ServerInfo, options: HardeningOptions): Promise<void> {
   if (!server.isRoot) return

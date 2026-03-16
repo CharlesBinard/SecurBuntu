@@ -1,13 +1,13 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import type { HardeningOptions, ServerInfo, SshClient, TaskResult } from "../types.js"
-import { runConfigureFail2ban } from "./fail2ban.js"
-import { runHardenSshConfig } from "./ssh-config.js"
-import { runInjectSshKeys } from "./ssh-keys.js"
-import { runConfigureSysctl } from "./sysctl.js"
-import { runConfigureUfw } from "./ufw.js"
-import { runConfigureUnattended } from "./unattended.js"
-import { runCreateUser } from "./user.js"
+import type { HardeningOptions, ServerInfo, SshClient, TaskResult } from "../types.ts"
+import { runConfigureFail2ban } from "./fail2ban.ts"
+import { runHardenSshConfig } from "./ssh-config.ts"
+import { runInjectSshKeys } from "./ssh-keys.ts"
+import { runConfigureSysctl } from "./sysctl.ts"
+import { runConfigureUfw } from "./ufw.ts"
+import { runConfigureUnattended } from "./unattended.ts"
+import { runCreateUser } from "./user.ts"
 
 interface TaskEntry {
   label: string

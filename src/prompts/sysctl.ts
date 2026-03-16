@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import type { HardeningOptions } from "../types.js"
-import { unwrapBoolean, unwrapStringArray } from "./helpers.js"
+import type { HardeningOptions } from "../types.ts"
+import { unwrapBoolean, unwrapStringArray } from "./helpers.ts"
 
 export async function promptSysctlOptions(options: HardeningOptions): Promise<void> {
   const enableSysctl = unwrapBoolean(

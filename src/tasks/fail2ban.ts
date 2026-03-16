@@ -1,4 +1,4 @@
-import type { HardeningTask } from "../types.js"
+import type { HardeningTask } from "../types.ts"
 
 export const runConfigureFail2ban: HardeningTask = async (ssh, options, server) => {
   if (!options.installFail2ban) {

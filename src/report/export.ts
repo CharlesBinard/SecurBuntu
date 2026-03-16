@@ -1,5 +1,5 @@
 import { writeFileSync } from "fs"
-import type { AuditResult, Report } from "../types.js"
+import type { AuditResult, Report } from "../types.ts"
 
 function formatAuditTableMarkdown(report: Report): string[] {
   const lines: string[] = []

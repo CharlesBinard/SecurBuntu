@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import type { HardeningOptions } from "../types.js"
-import { handleCancel, isCancel, unwrapBoolean, unwrapText } from "./helpers.js"
+import type { HardeningOptions } from "../types.ts"
+import { handleCancel, isCancel, unwrapBoolean, unwrapText } from "./helpers.ts"
 
 export async function promptSshOptions(options: HardeningOptions): Promise<void> {
   // Change SSH port

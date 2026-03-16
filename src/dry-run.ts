@@ -1,6 +1,6 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import type { CommandResult, ExecOptions, SshClient } from "./types.js"
+import type { CommandResult, ExecOptions, SshClient } from "./types.ts"
 
 export class DryRunSshClient implements SshClient {
   private commands: string[] = []

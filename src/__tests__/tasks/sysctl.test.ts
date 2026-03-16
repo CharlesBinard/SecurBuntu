@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { runConfigureSysctl } from "../../tasks/sysctl.js"
-import type { HardeningOptions, ServerInfo, SysctlOptions } from "../../types.js"
-import { MockSshClient } from "../helpers/mock-ssh.js"
+import { runConfigureSysctl } from "../../tasks/sysctl.ts"
+import type { HardeningOptions, ServerInfo, SysctlOptions } from "../../types.ts"
+import { MockSshClient } from "../helpers/mock-ssh.ts"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,

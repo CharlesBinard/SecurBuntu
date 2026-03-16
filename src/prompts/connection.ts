@@ -1,9 +1,9 @@
 import * as p from "@clack/prompts"
 import { existsSync } from "fs"
 import pc from "picocolors"
-import { checkSshCopyIdInstalled, checkSshpassInstalled, detectDefaultKeyPath } from "../ssh/index.js"
-import type { ConnectionConfig } from "../types.js"
-import { handleCancel, isCancel, unwrapText } from "./helpers.js"
+import { checkSshCopyIdInstalled, checkSshpassInstalled, detectDefaultKeyPath } from "../ssh/index.ts"
+import type { ConnectionConfig } from "../types.ts"
+import { handleCancel, isCancel, unwrapText } from "./helpers.ts"
 
 async function promptAuthCredentials(
   authMethod: "key" | "password" | "copy",

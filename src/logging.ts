@@ -1,5 +1,5 @@
 import { writeFileSync } from "fs"
-import type { CommandResult, ExecOptions, SshClient } from "./types.js"
+import type { CommandResult, ExecOptions, SshClient } from "./types.ts"
 
 export class LoggingSshClient implements SshClient {
   private entries: string[] = []

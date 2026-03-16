@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { runHardenSshConfig } from "../../tasks/ssh-config.js"
-import type { HardeningOptions, ServerInfo } from "../../types.js"
-import { MockSshClient } from "../helpers/mock-ssh.js"
+import { runHardenSshConfig } from "../../tasks/ssh-config.ts"
+import type { HardeningOptions, ServerInfo } from "../../types.ts"
+import { MockSshClient } from "../helpers/mock-ssh.ts"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,

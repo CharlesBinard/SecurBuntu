@@ -1,4 +1,4 @@
-import type { AuditResult, SshClient } from "../types.js"
+import type { AuditResult, SshClient } from "../types.ts"
 
 export async function runAudit(ssh: SshClient): Promise<AuditResult> {
   const checks: AuditResult["checks"] = []

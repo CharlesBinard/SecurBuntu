@@ -1,6 +1,6 @@
 import * as p from "@clack/prompts"
-import type { HardeningOptions } from "../types.js"
-import { handleCancel, isCancel, unwrapBoolean, unwrapStringArray, unwrapText } from "./helpers.js"
+import type { HardeningOptions } from "../types.ts"
+import { handleCancel, isCancel, unwrapBoolean, unwrapStringArray, unwrapText } from "./helpers.ts"
 
 export function parseUfwPortChoice(choice: string): {
   port: string

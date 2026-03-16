@@ -4,6 +4,6 @@ export {
   promptExportAudit,
   promptExportLog,
   promptExportReport,
-} from "./confirmation.js"
-export { promptConnection } from "./connection.js"
-export { promptHardeningOptions } from "./hardening.js"
+} from "./confirmation.ts"
+export { promptConnection } from "./connection.ts"
+export { promptHardeningOptions } from "./hardening.ts"

@@ -1,1 +1,1 @@
-export { connectWithRetry } from "./retry-loop.js"
+export { connectWithRetry } from "./retry-loop.ts"

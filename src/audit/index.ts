@@ -1,2 +1,2 @@
-export { displayAudit } from "./display.js"
-export { runAudit } from "./scanner.js"
+export { displayAudit } from "./display.ts"
+export { runAudit } from "./scanner.ts"
