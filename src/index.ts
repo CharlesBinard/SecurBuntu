@@ -66,16 +66,25 @@ async function main(): Promise<void> {
       const pubKeyPath = connectionConfig.privateKeyPath + ".pub"
       log.info(pc.dim("Copying your SSH key to the server. You will be prompted for the password."))
 
-      const copied = await copyKeyToServer(
+      const result = await copyKeyToServer(
         connectionConfig.host,
         connectionConfig.username,
         pubKeyPath,
         connectionConfig.port,
       )
 
-      if (copied) {
+      if (result.success) {
         log.success("SSH key copied successfully. Connecting with key auth...")
         connectionConfig.authMethod = "key"
+      } else if (result.passwordAuthDisabled) {
+        log.error(
+          `${pc.red("The server does not accept password authentication.")}\n` +
+          `  ${pc.dim("Password auth is disabled on this server, so ssh-copy-id cannot connect.")}\n` +
+          `  ${pc.dim("To add your key, use the server console or cloud provider dashboard to add")}\n` +
+          `  ${pc.dim("your public key to /root/.ssh/authorized_keys manually.")}`
+        )
+        log.info(pc.cyan("Let's try again.\n"))
+        continue
       } else {
         log.error(pc.red("Failed to copy SSH key. Check the password and try again."))
         log.info(pc.cyan("Let's try again.\n"))
@@ -122,16 +131,23 @@ async function main(): Promise<void> {
           }
 
           log.info(pc.dim("Copying your SSH key to the server. You will be prompted for the password."))
-          const copied = await copyKeyToServer(
+          const copyResult = await copyKeyToServer(
             connectionConfig.host,
             connectionConfig.username,
             pubKeyPath,
             connectionConfig.port,
           )
 
-          if (copied) {
+          if (copyResult.success) {
             log.success("SSH key copied successfully. Reconnecting...")
             continue // retry the loop — authMethod is still "key"
+          } else if (copyResult.passwordAuthDisabled) {
+            log.error(
+              `${pc.red("The server does not accept password authentication.")}\n` +
+              `  ${pc.dim("Password auth is disabled on this server, so ssh-copy-id cannot connect.")}\n` +
+              `  ${pc.dim("To add your key, use the server console or cloud provider dashboard to add")}\n` +
+              `  ${pc.dim("your public key to /root/.ssh/authorized_keys manually.")}`
+            )
           } else {
             log.error(pc.red("Failed to copy SSH key. Check the password and try again."))
           }
