@@ -79,6 +79,7 @@ export interface Report {
   results: TaskResult[]
   newSshPort?: number
   audit?: AuditResult
+  postAudit?: AuditResult
 }
 
 export interface CommandResult {

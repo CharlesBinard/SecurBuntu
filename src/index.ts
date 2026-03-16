@@ -14,6 +14,20 @@ import type { Report } from "./types.js"
 
 async function main(): Promise<void> {
   await initVersion()
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(`SecurBuntu — Ubuntu server hardening tool
+
+Usage: bun src/index.ts [options]
+
+Options:
+  --audit     Run security audit only (no hardening)
+  --dry-run   Preview changes without applying them
+  --log       Automatically save execution log
+  -h, --help  Show this help message
+`)
+    process.exit(0)
+  }
+
   const isDryRun = process.argv.includes("--dry-run")
   const wantLog = process.argv.includes("--log")
   const isAuditOnly = process.argv.includes("--audit")
@@ -299,6 +313,11 @@ async function main(): Promise<void> {
       })
     }
 
+    // Post-hardening audit
+    s.start("Running post-hardening audit...")
+    const postAudit = await runAudit(ssh)
+    s.stop("Post-hardening audit complete")
+
     // 8. Report
     const report: Report = {
       serverIp: connectionConfig.host,
@@ -309,6 +328,7 @@ async function main(): Promise<void> {
       results,
       newSshPort: options.changeSshPort ? options.newSshPort : undefined,
       audit: auditResult,
+      postAudit,
     }
 
     displayReport(report)

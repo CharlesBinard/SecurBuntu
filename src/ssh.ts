@@ -31,15 +31,17 @@ function buildSshArgs(config: ConnectionConfig): string[] {
 
 const DEFAULT_TIMEOUT = 300_000 // 5 minutes
 
-async function spawnSsh(
-  args: string[],
+async function spawnProcess(
+  command: string[],
   stdinData?: string,
   timeout: number = DEFAULT_TIMEOUT,
+  env?: Record<string, string | undefined>,
 ): Promise<CommandResult> {
-  const proc = Bun.spawn(["ssh", ...args], {
+  const proc = Bun.spawn(command, {
     stdin: stdinData !== undefined ? Buffer.from(stdinData) : "ignore",
     stdout: "pipe",
     stderr: "pipe",
+    ...(env && { env }),
   })
 
   let timedOut = false
@@ -70,44 +72,25 @@ async function spawnSsh(
   }
 }
 
+async function spawnSsh(
+  args: string[],
+  stdinData?: string,
+  timeout: number = DEFAULT_TIMEOUT,
+): Promise<CommandResult> {
+  return spawnProcess(["ssh", ...args], stdinData, timeout)
+}
+
 async function spawnSshpass(
   password: string,
   args: string[],
   timeout: number = DEFAULT_TIMEOUT,
 ): Promise<CommandResult> {
-  const proc = Bun.spawn(["sshpass", "-e", "ssh", ...args], {
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
-    env: { ...process.env, SSHPASS: password },
-  })
-
-  let timedOut = false
-  const timer = setTimeout(() => {
-    timedOut = true
-    proc.kill()
-  }, timeout)
-
-  try {
-    const [stdout, stderr] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-    ])
-
-    const exitCode = await proc.exited
-
-    if (timedOut) {
-      return {
-        stdout: "",
-        stderr: `Command timed out after ${Math.round(timeout / 1000)}s`,
-        exitCode: -1,
-      }
-    }
-
-    return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode }
-  } finally {
-    clearTimeout(timer)
-  }
+  return spawnProcess(
+    ["sshpass", "-e", "ssh", ...args],
+    undefined,
+    timeout,
+    { ...process.env, SSHPASS: password },
+  )
 }
 
 export async function checkSshpassInstalled(): Promise<boolean> {
@@ -196,7 +179,7 @@ export async function fetchHostKeyFingerprint(host: string, port: number): Promi
   }
 
   // Fetch the server's host key via ssh-keyscan
-  const keyscanProc = Bun.spawn(["ssh-keyscan", "-p", String(port), host], {
+  const keyscanProc = Bun.spawn(["ssh-keyscan", "-T", "5", "-p", String(port), host], {
     stdout: "pipe",
     stderr: "pipe",
   })
@@ -366,7 +349,7 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
 
     async writeFile(remotePath: string, content: string): Promise<void> {
       const result = await spawnSsh(
-        [...execArgs, prefixSudo(`tee '${remotePath}' > /dev/null`)],
+        [...execArgs, prefixSudo(`tee ${shellEscape(remotePath)} > /dev/null`)],
         sudoStdin(content),
       )
       if (result.exitCode !== 0) {
@@ -375,7 +358,7 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
     },
 
     async readFile(remotePath: string): Promise<string> {
-      const result = await spawnSsh([...execArgs, prefixSudo(`cat '${remotePath}'`)], sudoStdin())
+      const result = await spawnSsh([...execArgs, prefixSudo(`cat ${shellEscape(remotePath)}`)], sudoStdin())
       if (result.exitCode !== 0) {
         throw new Error(`Failed to read ${remotePath}: ${result.stderr}`)
       }
@@ -383,7 +366,7 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
     },
 
     async fileExists(remotePath: string): Promise<boolean> {
-      const result = await spawnSsh([...execArgs, prefixSudo(`test -f '${remotePath}' && echo yes`)], sudoStdin())
+      const result = await spawnSsh([...execArgs, prefixSudo(`test -f ${shellEscape(remotePath)} && echo yes`)], sudoStdin())
       return result.stdout === "yes"
     },
 
