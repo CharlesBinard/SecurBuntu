@@ -1,5 +1,5 @@
 import { writeFileSync } from "fs"
-import type { SshClient, CommandResult, ExecOptions } from "./types.js"
+import type { CommandResult, ExecOptions, SshClient } from "./types.js"
 
 export class LoggingSshClient implements SshClient {
   private entries: string[] = []
@@ -22,9 +22,7 @@ export class LoggingSshClient implements SshClient {
     const result = await this.real.exec(command, options)
     this.log(`EXIT: ${result.exitCode}`)
     if (result.stdout) {
-      const truncated = result.stdout.length > 2000
-        ? result.stdout.slice(0, 2000) + "... (truncated)"
-        : result.stdout
+      const truncated = result.stdout.length > 2000 ? `${result.stdout.slice(0, 2000)}... (truncated)` : result.stdout
       this.log(`STDOUT: ${truncated}`)
     }
     if (result.stderr) {
@@ -38,9 +36,7 @@ export class LoggingSshClient implements SshClient {
     const result = await this.real.execWithStdin(command, stdin, options)
     this.log(`EXIT: ${result.exitCode}`)
     if (result.stdout) {
-      const truncated = result.stdout.length > 2000
-        ? result.stdout.slice(0, 2000) + "... (truncated)"
-        : result.stdout
+      const truncated = result.stdout.length > 2000 ? `${result.stdout.slice(0, 2000)}... (truncated)` : result.stdout
       this.log(`STDOUT: ${truncated}`)
     }
     if (result.stderr) {
@@ -75,7 +71,7 @@ export class LoggingSshClient implements SshClient {
 
   flush(filePath: string): void {
     if (this.entries.length === 0) return
-    writeFileSync(filePath, this.entries.join("\n") + "\n", "utf-8")
+    writeFileSync(filePath, `${this.entries.join("\n")}\n`, "utf-8")
   }
 
   hasEntries(): boolean {

@@ -102,8 +102,4 @@ export interface SshClient {
   readonly isRoot: boolean
 }
 
-export type HardeningTask = (
-  ssh: SshClient,
-  options: HardeningOptions,
-  server: ServerInfo,
-) => Promise<TaskResult>
+export type HardeningTask = (ssh: SshClient, options: HardeningOptions, server: ServerInfo) => Promise<TaskResult>

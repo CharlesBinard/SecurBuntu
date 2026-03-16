@@ -1,7 +1,32 @@
-import pc from "picocolors"
 import { note } from "@clack/prompts"
 import { writeFileSync } from "fs"
-import type { Report, AuditResult } from "./types.js"
+import pc from "picocolors"
+import type { AuditResult, Report } from "./types.js"
+
+function formatAuditSection(report: Report): string[] {
+  const lines: string[] = []
+
+  if (report.audit && report.postAudit) {
+    lines.push("")
+    lines.push(pc.bold("Before / After:"))
+    for (const [i, before] of report.audit.checks.entries()) {
+      const after = report.postAudit.checks[i]
+      const afterStatus = after?.status ?? "—"
+      const changed = before.status !== afterStatus
+      const arrow = changed ? pc.green("→") : pc.dim("→")
+      const afterColored = changed ? pc.green(afterStatus) : pc.dim(afterStatus)
+      lines.push(`  ${pc.dim(before.name)}: ${before.status} ${arrow} ${afterColored}`)
+    }
+  } else if (report.audit) {
+    lines.push("")
+    lines.push(pc.bold("Audit (pre-hardening):"))
+    for (const check of report.audit.checks) {
+      lines.push(`  ${pc.dim(check.name)}: ${check.status}`)
+    }
+  }
+
+  return lines
+}
 
 export function displayReport(report: Report): void {
   const lines: string[] = []
@@ -23,25 +48,7 @@ export function displayReport(report: Report): void {
     }
   }
 
-  if (report.audit && report.postAudit) {
-    lines.push("")
-    lines.push(pc.bold("Before / After:"))
-    for (let i = 0; i < report.audit.checks.length; i++) {
-      const before = report.audit.checks[i]!
-      const after = report.postAudit.checks[i]
-      const afterStatus = after?.status ?? "—"
-      const changed = before.status !== afterStatus
-      const arrow = changed ? pc.green("→") : pc.dim("→")
-      const afterColored = changed ? pc.green(afterStatus) : pc.dim(afterStatus)
-      lines.push(`  ${pc.dim(before.name)}: ${before.status} ${arrow} ${afterColored}`)
-    }
-  } else if (report.audit) {
-    lines.push("")
-    lines.push(pc.bold("Audit (pre-hardening):"))
-    for (const check of report.audit.checks) {
-      lines.push(`  ${pc.dim(check.name)}: ${check.status}`)
-    }
-  }
+  lines.push(...formatAuditSection(report))
 
   if (report.newSshPort) {
     lines.push("")
@@ -51,6 +58,35 @@ export function displayReport(report: Report): void {
   }
 
   note(lines.join("\n"), "SecurBuntu Report")
+}
+
+function formatAuditTableMarkdown(report: Report): string[] {
+  const lines: string[] = []
+
+  if (report.audit && report.postAudit) {
+    lines.push("## Before / After")
+    lines.push("")
+    lines.push("| Check | Before | After |")
+    lines.push("|-------|--------|-------|")
+    for (const [i, before] of report.audit.checks.entries()) {
+      const after = report.postAudit.checks[i]
+      const afterStatus = after?.status ?? "—"
+      const changed = before.status !== afterStatus ? " **changed**" : ""
+      lines.push(`| ${before.name} | ${before.status} | ${afterStatus}${changed} |`)
+    }
+    lines.push("")
+  } else if (report.audit) {
+    lines.push("## Pre-Hardening Audit")
+    lines.push("")
+    lines.push("| Check | Status |")
+    lines.push("|-------|--------|")
+    for (const check of report.audit.checks) {
+      lines.push(`| ${check.name} | ${check.status} |`)
+    }
+    lines.push("")
+  }
+
+  return lines
 }
 
 export function exportReportMarkdown(report: Report): string {
@@ -88,29 +124,7 @@ export function exportReportMarkdown(report: Report): string {
     lines.push("")
   }
 
-  if (report.audit && report.postAudit) {
-    lines.push("## Before / After")
-    lines.push("")
-    lines.push("| Check | Before | After |")
-    lines.push("|-------|--------|-------|")
-    for (let i = 0; i < report.audit.checks.length; i++) {
-      const before = report.audit.checks[i]!
-      const after = report.postAudit.checks[i]
-      const afterStatus = after?.status ?? "—"
-      const changed = before.status !== afterStatus ? " **changed**" : ""
-      lines.push(`| ${before.name} | ${before.status} | ${afterStatus}${changed} |`)
-    }
-    lines.push("")
-  } else if (report.audit) {
-    lines.push("## Pre-Hardening Audit")
-    lines.push("")
-    lines.push("| Check | Status |")
-    lines.push("|-------|--------|")
-    for (const check of report.audit.checks) {
-      lines.push(`| ${check.name} | ${check.status} |`)
-    }
-    lines.push("")
-  }
+  lines.push(...formatAuditTableMarkdown(report))
 
   if (report.newSshPort) {
     lines.push("## Important")

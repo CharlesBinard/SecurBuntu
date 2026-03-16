@@ -1,9 +1,18 @@
-import { describe, test, expect, mock as bunMock } from "bun:test"
+import { mock as bunMock, describe, expect, test } from "bun:test"
 import { MockSshClient } from "./helpers/mock-ssh.js"
 
 bunMock.module("@clack/prompts", () => ({
-  log: { info: () => {}, warning: () => {} },
-  note: () => {},
+  log: {
+    info: () => {
+      /* noop */
+    },
+    warning: () => {
+      /* noop */
+    },
+  },
+  note: () => {
+    /* noop */
+  },
 }))
 
 import { runAudit } from "../audit.js"
@@ -18,7 +27,7 @@ describe("runAudit", () => {
   test("check names match expected list", async () => {
     const ssh = new MockSshClient()
     const result = await runAudit(ssh)
-    const names = result.checks.map(c => c.name)
+    const names = result.checks.map((c) => c.name)
     expect(names).toEqual([
       "SSH Port",
       "Root Login",
@@ -37,14 +46,14 @@ describe("runAudit", () => {
     const ssh = new MockSshClient()
     ssh.onExec("grep -h '^Port '", { stdout: "Port 2222" })
     const result = await runAudit(ssh)
-    const portCheck = result.checks.find(c => c.name === "SSH Port")
+    const portCheck = result.checks.find((c) => c.name === "SSH Port")
     expect(portCheck?.status).toBe("2222")
   })
 
   test("defaults SSH port to 22 when not configured", async () => {
     const ssh = new MockSshClient()
     const result = await runAudit(ssh)
-    const portCheck = result.checks.find(c => c.name === "SSH Port")
+    const portCheck = result.checks.find((c) => c.name === "SSH Port")
     expect(portCheck?.status).toBe("22 (default)")
   })
 
@@ -52,7 +61,7 @@ describe("runAudit", () => {
     const ssh = new MockSshClient()
     ssh.onExec("grep -h '^PermitRootLogin '", { stdout: "PermitRootLogin prohibit-password" })
     const result = await runAudit(ssh)
-    const check = result.checks.find(c => c.name === "Root Login")
+    const check = result.checks.find((c) => c.name === "Root Login")
     expect(check?.status).toBe("prohibit-password")
   })
 
@@ -60,7 +69,7 @@ describe("runAudit", () => {
     const ssh = new MockSshClient()
     ssh.onExec("which ufw", { stdout: "Status: active" })
     const result = await runAudit(ssh)
-    const check = result.checks.find(c => c.name === "UFW Firewall")
+    const check = result.checks.find((c) => c.name === "UFW Firewall")
     expect(check?.status).toBe("active")
   })
 
@@ -68,7 +77,7 @@ describe("runAudit", () => {
     const ssh = new MockSshClient()
     ssh.onExec("which ufw", { stdout: "not installed" })
     const result = await runAudit(ssh)
-    const check = result.checks.find(c => c.name === "UFW Firewall")
+    const check = result.checks.find((c) => c.name === "UFW Firewall")
     expect(check?.status).toBe("not installed")
   })
 
@@ -76,7 +85,7 @@ describe("runAudit", () => {
     const ssh = new MockSshClient()
     ssh.onExec("systemctl is-active fail2ban", { stdout: "active" })
     const result = await runAudit(ssh)
-    const check = result.checks.find(c => c.name === "Fail2ban")
+    const check = result.checks.find((c) => c.name === "Fail2ban")
     expect(check?.status).toBe("active")
   })
 
@@ -84,14 +93,14 @@ describe("runAudit", () => {
     const ssh = new MockSshClient()
     ssh.onExec("test -f /etc/sysctl.d/99-securbuntu.conf", { stdout: "hardened" })
     const result = await runAudit(ssh)
-    const check = result.checks.find(c => c.name === "Sysctl Hardening")
+    const check = result.checks.find((c) => c.name === "Sysctl Hardening")
     expect(check?.status).toBe("hardened")
   })
 
   test("detects SSH banner not set", async () => {
     const ssh = new MockSshClient()
     const result = await runAudit(ssh)
-    const check = result.checks.find(c => c.name === "SSH Banner")
+    const check = result.checks.find((c) => c.name === "SSH Banner")
     expect(check?.status).toBe("not set")
   })
 
@@ -99,7 +108,7 @@ describe("runAudit", () => {
     const ssh = new MockSshClient()
     ssh.onExec("grep -h '^Banner '", { stdout: "Banner /etc/issue.net" })
     const result = await runAudit(ssh)
-    const check = result.checks.find(c => c.name === "SSH Banner")
+    const check = result.checks.find((c) => c.name === "SSH Banner")
     expect(check?.status).toBe("Banner /etc/issue.net")
   })
 })

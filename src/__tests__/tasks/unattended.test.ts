@@ -1,7 +1,7 @@
-import { describe, test, expect } from "bun:test"
-import { MockSshClient } from "../helpers/mock-ssh.js"
+import { describe, expect, test } from "bun:test"
 import { runConfigureUnattended } from "../../tasks/unattended.js"
 import type { HardeningOptions, ServerInfo } from "../../types.js"
+import { MockSshClient } from "../helpers/mock-ssh.js"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,

@@ -1,4 +1,4 @@
-import type { SshClient, CommandResult, ExecOptions } from "../../types.js"
+import type { CommandResult, ExecOptions, SshClient } from "../../types.js"
 
 interface MockExecResponse {
   stdout?: string
@@ -59,13 +59,13 @@ export class MockSshClient implements SshClient {
     return this.fileContents.has(remotePath)
   }
 
-  close(): void {}
+  close(): void {
+    /* noop */
+  }
 
   private findResponse(command: string): CommandResult {
     for (const { pattern, response } of this.responses) {
-      const matches = typeof pattern === "string"
-        ? command.includes(pattern)
-        : pattern.test(command)
+      const matches = typeof pattern === "string" ? command.includes(pattern) : pattern.test(command)
       if (matches) {
         return {
           stdout: response.stdout ?? "",
@@ -78,10 +78,10 @@ export class MockSshClient implements SshClient {
   }
 
   hasCommand(substring: string): boolean {
-    return this.commands.some(cmd => cmd.includes(substring))
+    return this.commands.some((cmd) => cmd.includes(substring))
   }
 
   commandCount(substring: string): number {
-    return this.commands.filter(cmd => cmd.includes(substring)).length
+    return this.commands.filter((cmd) => cmd.includes(substring)).length
   }
 }

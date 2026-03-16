@@ -1,13 +1,13 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
 import type { HardeningOptions, ServerInfo, SshClient, TaskResult } from "../types.js"
-import { runCreateUser } from "./user.js"
-import { runInjectSshKeys } from "./ssh-keys.js"
-import { runConfigureUfw } from "./ufw.js"
 import { runConfigureFail2ban } from "./fail2ban.js"
-import { runConfigureUnattended } from "./unattended.js"
 import { runHardenSshConfig } from "./ssh-config.js"
+import { runInjectSshKeys } from "./ssh-keys.js"
 import { runConfigureSysctl } from "./sysctl.js"
+import { runConfigureUfw } from "./ufw.js"
+import { runConfigureUnattended } from "./unattended.js"
+import { runCreateUser } from "./user.js"
 
 interface TaskEntry {
   label: string
@@ -60,7 +60,7 @@ export async function executeTasks(
       results.push(result)
 
       // On failure (not skip), ask whether to continue
-      if (!result.success && !result.message.startsWith("Skipped")) {
+      if (!(result.success || result.message.startsWith("Skipped"))) {
         const shouldContinue = await promptContinueOnFailure(task.label)
         if (!shouldContinue) {
           return results

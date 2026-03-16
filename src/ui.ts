@@ -1,9 +1,9 @@
-import pc from "picocolors"
 import { intro } from "@clack/prompts"
+import pc from "picocolors"
 
 async function getVersionAsync(): Promise<string> {
   try {
-    const file = Bun.file(import.meta.dir + "/../package.json")
+    const file = Bun.file(`${import.meta.dir}/../package.json`)
     const pkg: { version: string } = await file.json()
     return pkg.version
   } catch {
@@ -35,4 +35,3 @@ ${pc.cyan(pc.bold("  |____/ \\___|\\___|\\__,_|_|  |____/ \\__,_|_| |_|\\__|\\__
   console.log(banner)
   intro(pc.bgCyan(pc.black(" SecurBuntu ")))
 }
-

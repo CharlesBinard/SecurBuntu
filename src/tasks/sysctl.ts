@@ -36,7 +36,7 @@ function buildSysctlParams(opts: SysctlOptions): SysctlParam[] {
 }
 
 export const runConfigureSysctl: HardeningTask = async (ssh, options) => {
-  if (!options.enableSysctl || !options.sysctlOptions) {
+  if (!(options.enableSysctl && options.sysctlOptions)) {
     return {
       name: "Kernel Hardening",
       success: true,
@@ -54,10 +54,7 @@ export const runConfigureSysctl: HardeningTask = async (ssh, options) => {
   }
 
   const date = new Date().toISOString().split("T")[0] ?? "unknown"
-  const lines = [
-    `# SecurBuntu Kernel Hardening - generated on ${date}`,
-    ...params.map(p => `${p.key}=${p.value}`),
-  ]
+  const lines = [`# SecurBuntu Kernel Hardening - generated on ${date}`, ...params.map((p) => `${p.key}=${p.value}`)]
 
   await ssh.writeFile("/etc/sysctl.d/99-securbuntu.conf", lines.join("\n"))
 
@@ -75,6 +72,6 @@ export const runConfigureSysctl: HardeningTask = async (ssh, options) => {
     name: "Kernel Hardening",
     success: true,
     message: `Applied ${params.length} kernel security parameter(s)`,
-    details: params.map(p => `${p.key}=${p.value}`).join(", "),
+    details: params.map((p) => `${p.key}=${p.value}`).join(", "),
   }
 }

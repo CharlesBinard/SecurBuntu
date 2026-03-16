@@ -1,7 +1,7 @@
 import type { HardeningTask } from "../types.js"
 
 export const runCreateUser: HardeningTask = async (ssh, options) => {
-  if (!options.createSudoUser || !options.sudoUsername || !options.sudoPassword) {
+  if (!(options.createSudoUser && options.sudoUsername && options.sudoPassword)) {
     return {
       name: "Create Sudo User",
       success: true,
@@ -26,10 +26,7 @@ export const runCreateUser: HardeningTask = async (ssh, options) => {
     }
   }
 
-  const pwResult = await ssh.execWithStdin(
-    "chpasswd",
-    `${username}:${options.sudoPassword}\n`,
-  )
+  const pwResult = await ssh.execWithStdin("chpasswd", `${username}:${options.sudoPassword}\n`)
   if (pwResult.exitCode !== 0) {
     return {
       name: "Create Sudo User",
@@ -51,10 +48,10 @@ export const runCreateUser: HardeningTask = async (ssh, options) => {
 
   const setupResult = await ssh.exec(
     `mkdir -p /home/${username}/.ssh && ` +
-    `chmod 700 /home/${username}/.ssh && ` +
-    `touch /home/${username}/.ssh/authorized_keys && ` +
-    `chmod 600 /home/${username}/.ssh/authorized_keys && ` +
-    `chown -R ${username}:${username} /home/${username}/.ssh`,
+      `chmod 700 /home/${username}/.ssh && ` +
+      `touch /home/${username}/.ssh/authorized_keys && ` +
+      `chmod 600 /home/${username}/.ssh/authorized_keys && ` +
+      `chown -R ${username}:${username} /home/${username}/.ssh`,
   )
   if (setupResult.exitCode !== 0) {
     return {

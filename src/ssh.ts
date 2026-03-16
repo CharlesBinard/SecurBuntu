@@ -1,25 +1,26 @@
 import { createHash } from "crypto"
-import { existsSync, appendFileSync, mkdirSync } from "fs"
-import type { ConnectionConfig, CommandResult, ExecOptions, ServerInfo, SshClient } from "./types.js"
+import { appendFileSync, existsSync, mkdirSync } from "fs"
+import type { CommandResult, ConnectionConfig, ExecOptions, ServerInfo, SshClient } from "./types.js"
 
 function shellEscape(s: string): string {
-  return "'" + s.replace(/'/g, "'\\''") + "'"
+  return `'${s.replace(/'/g, "'\\''")}'`
 }
 
 function hashControlPath(user: string, host: string, port: number): string {
-  const hash = createHash("sha256")
-    .update(`${user}@${host}:${port}`)
-    .digest("hex")
-    .slice(0, 12)
+  const hash = createHash("sha256").update(`${user}@${host}:${port}`).digest("hex").slice(0, 12)
   return `/tmp/securbuntu-${hash}`
 }
 
 function buildSshArgs(config: ConnectionConfig): string[] {
   const args: string[] = [
-    "-o", "ControlPath=" + config.controlPath,
-    "-o", "StrictHostKeyChecking=yes",
-    "-o", "ConnectTimeout=10",
-    "-p", String(config.port),
+    "-o",
+    `ControlPath=${config.controlPath}`,
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "ConnectTimeout=10",
+    "-p",
+    String(config.port),
   ]
 
   if (config.authMethod === "key" && config.privateKeyPath) {
@@ -51,10 +52,7 @@ async function spawnProcess(
   }, timeout)
 
   try {
-    const [stdout, stderr] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-    ])
+    const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()])
 
     const exitCode = await proc.exited
 
@@ -72,11 +70,7 @@ async function spawnProcess(
   }
 }
 
-async function spawnSsh(
-  args: string[],
-  stdinData?: string,
-  timeout: number = DEFAULT_TIMEOUT,
-): Promise<CommandResult> {
+async function spawnSsh(args: string[], stdinData?: string, timeout: number = DEFAULT_TIMEOUT): Promise<CommandResult> {
   return spawnProcess(["ssh", ...args], stdinData, timeout)
 }
 
@@ -85,12 +79,7 @@ async function spawnSshpass(
   args: string[],
   timeout: number = DEFAULT_TIMEOUT,
 ): Promise<CommandResult> {
-  return spawnProcess(
-    ["sshpass", "-e", "ssh", ...args],
-    undefined,
-    timeout,
-    { ...process.env, SSHPASS: password },
-  )
+  return spawnProcess(["sshpass", "-e", "ssh", ...args], undefined, timeout, { ...process.env, SSHPASS: password })
 }
 
 export async function checkSshpassInstalled(): Promise<boolean> {
@@ -132,9 +121,12 @@ export async function copyKeyToServer(
 ): Promise<CopyKeyResult> {
   const args = [
     "ssh-copy-id",
-    "-i", pubKeyPath,
-    "-p", String(port),
-    "-o", "StrictHostKeyChecking=yes",
+    "-i",
+    pubKeyPath,
+    "-p",
+    String(port),
+    "-o",
+    "StrictHostKeyChecking=yes",
     `${user}@${host}`,
   ]
 
@@ -212,21 +204,17 @@ export function addToKnownHosts(rawKeys: string): void {
   const sshDir = `${home}/.ssh`
   const knownHostsPath = `${sshDir}/known_hosts`
   mkdirSync(sshDir, { recursive: true })
-  appendFileSync(knownHostsPath, rawKeys + "\n", "utf-8")
+  appendFileSync(knownHostsPath, `${rawKeys}\n`, "utf-8")
 }
 
 export function detectDefaultKeyPath(): string | undefined {
   const home = process.env.HOME ?? ""
-  const candidates = [
-    `${home}/.ssh/id_ed25519`,
-    `${home}/.ssh/id_ecdsa`,
-    `${home}/.ssh/id_rsa`,
-  ]
+  const candidates = [`${home}/.ssh/id_ed25519`, `${home}/.ssh/id_ecdsa`, `${home}/.ssh/id_rsa`]
   for (const candidate of candidates) {
     try {
       if (existsSync(candidate)) return candidate
     } catch {
-      continue
+      /* ignored */
     }
   }
   return undefined
@@ -234,16 +222,12 @@ export function detectDefaultKeyPath(): string | undefined {
 
 export function detectDefaultPubKeyPath(): string | undefined {
   const home = process.env.HOME ?? ""
-  const candidates = [
-    `${home}/.ssh/id_ed25519.pub`,
-    `${home}/.ssh/id_ecdsa.pub`,
-    `${home}/.ssh/id_rsa.pub`,
-  ]
+  const candidates = [`${home}/.ssh/id_ed25519.pub`, `${home}/.ssh/id_ecdsa.pub`, `${home}/.ssh/id_rsa.pub`]
   for (const candidate of candidates) {
     try {
       if (existsSync(candidate)) return candidate
     } catch {
-      continue
+      /* ignored */
     }
   }
   return undefined
@@ -255,9 +239,12 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
 
   const masterArgs = [
     ...buildSshArgs(fullConfig),
-    "-o", "ControlMaster=yes",
-    "-o", "ControlPersist=600",
-    "-N", "-f",
+    "-o",
+    "ControlMaster=yes",
+    "-o",
+    "ControlPersist=600",
+    "-N",
+    "-f",
     `${fullConfig.username}@${fullConfig.host}`,
   ]
 
@@ -274,12 +261,10 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
 
   const cleanup = () => {
     try {
-      Bun.spawnSync([
-        "ssh",
-        "-o", "ControlPath=" + controlPath,
-        "-O", "exit",
-        `${fullConfig.username}@${fullConfig.host}`,
-      ], { stdout: "ignore", stderr: "ignore" })
+      Bun.spawnSync(
+        ["ssh", "-o", `ControlPath=${controlPath}`, "-O", "exit", `${fullConfig.username}@${fullConfig.host}`],
+        { stdout: "ignore", stderr: "ignore" },
+      )
     } catch {
       // Best-effort cleanup
     }
@@ -293,8 +278,10 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
   process.on("SIGTERM", handleSignal)
 
   const execArgs = [
-    "-o", "ControlPath=" + controlPath,
-    "-o", "ControlMaster=no",
+    "-o",
+    `ControlPath=${controlPath}`,
+    "-o",
+    "ControlMaster=no",
     `${fullConfig.username}@${fullConfig.host}`,
   ]
 
@@ -312,10 +299,7 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
       }
 
       // Try with password
-      const sudoCheckWithPw = await spawnSsh(
-        [...execArgs, "sudo -S -p '' true 2>&1"],
-        config.sudoPassword + "\n",
-      )
+      const sudoCheckWithPw = await spawnSsh([...execArgs, "sudo -S -p '' true 2>&1"], `${config.sudoPassword}\n`)
       if (sudoCheckWithPw.exitCode !== 0) {
         cleanup()
         throw new Error("Invalid sudo password or user is not in sudoers.")
@@ -333,7 +317,7 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
 
   function sudoStdin(data?: string): string | undefined {
     if (!sudoPassword || rootUser) return data
-    return data !== undefined ? sudoPassword + "\n" + data : sudoPassword + "\n"
+    return data !== undefined ? `${sudoPassword}\n${data}` : `${sudoPassword}\n`
   }
 
   const client: SshClient = {
@@ -366,7 +350,10 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
     },
 
     async fileExists(remotePath: string): Promise<boolean> {
-      const result = await spawnSsh([...execArgs, prefixSudo(`test -f ${shellEscape(remotePath)} && echo yes`)], sudoStdin())
+      const result = await spawnSsh(
+        [...execArgs, prefixSudo(`test -f ${shellEscape(remotePath)} && echo yes`)],
+        sudoStdin(),
+      )
       return result.stdout === "yes"
     },
 
@@ -381,9 +368,9 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
 }
 
 export async function detectServerInfo(ssh: SshClient): Promise<ServerInfo> {
-  const osResult = await ssh.exec(". /etc/os-release && echo \"$ID|$VERSION_ID|$VERSION_CODENAME\"")
+  const osResult = await ssh.exec('. /etc/os-release && echo "$ID|$VERSION_ID|$VERSION_CODENAME"')
   if (osResult.exitCode !== 0) {
-    throw new Error("Failed to detect OS: " + osResult.stderr)
+    throw new Error(`Failed to detect OS: ${osResult.stderr}`)
   }
 
   const parts = osResult.stdout.split("|")
@@ -410,4 +397,3 @@ export async function detectServerInfo(ssh: SshClient): Promise<ServerInfo> {
     isRoot: ssh.isRoot,
   }
 }
-
