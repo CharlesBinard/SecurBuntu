@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
 import { readFileSync, existsSync } from "fs"
-import { detectDefaultKeyPath, detectDefaultPubKeyPath, checkSshpassInstalled } from "./ssh.js"
+import { detectDefaultKeyPath, detectDefaultPubKeyPath, checkSshpassInstalled, checkSshCopyIdInstalled } from "./ssh.js"
 import type { ConnectionConfig, HardeningOptions, ServerInfo, SshClient, UfwPort } from "./types.js"
 
 function isCancel(value: unknown): value is symbol {
@@ -84,24 +84,16 @@ export async function promptConnection(): Promise<ConnectionConfig> {
         throw new Error(`Public key not found at ${pubKeyPath}`)
       }
 
-      const hasSshpass = await checkSshpassInstalled()
-      if (!hasSshpass) {
+      const hasSshCopyId = await checkSshCopyIdInstalled()
+      if (!hasSshCopyId) {
         p.log.error(
-          `${pc.red("sshpass is required to copy your SSH key but is not installed.")}\n` +
+          `${pc.red("ssh-copy-id is required but is not installed.")}\n` +
           `  ${pc.dim("Install it with:")}\n` +
-          `  ${pc.cyan("  Ubuntu/Debian: sudo apt install sshpass")}\n` +
-          `  ${pc.cyan("  macOS:         brew install sshpass")}`
+          `  ${pc.cyan("  Ubuntu/Debian: sudo apt install openssh-client")}\n` +
+          `  ${pc.cyan("  macOS:         brew install ssh-copy-id")}`
         )
-        throw new Error("sshpass is not installed")
+        throw new Error("ssh-copy-id is not installed")
       }
-
-      const pw = unwrapText(await p.password({
-        message: "Enter the server password (for key copy only)",
-        validate(value) {
-          if (!value) return "Password is required"
-        },
-      }))
-      password = pw
     }
   } else {
     const hasSshpass = await checkSshpassInstalled()

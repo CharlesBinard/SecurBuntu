@@ -136,10 +136,9 @@ export async function copyKeyToServer(
   host: string,
   user: string,
   pubKeyPath: string,
-  password: string,
   port: number = 22,
 ): Promise<boolean> {
-  const sshCopyIdArgs = [
+  const args = [
     "ssh-copy-id",
     "-i", pubKeyPath,
     "-p", String(port),
@@ -147,11 +146,10 @@ export async function copyKeyToServer(
     `${user}@${host}`,
   ]
 
-  const proc = Bun.spawn(["sshpass", "-e", ...sshCopyIdArgs], {
-    stdin: "pipe",
+  const proc = Bun.spawn(args, {
+    stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
-    env: { ...process.env, SSHPASS: password },
   })
 
   const exitCode = await proc.exited
