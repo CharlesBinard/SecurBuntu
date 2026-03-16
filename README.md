@@ -14,6 +14,8 @@
 [![TypeScript](https://img.shields.io/badge/lang-TypeScript-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![Ubuntu](https://img.shields.io/badge/target-Ubuntu_22.04+-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com)
 [![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](#license)
+[![CI](https://github.com/CharlesBinard/SecurBuntu/actions/workflows/ci.yml/badge.svg)](https://github.com/CharlesBinard/SecurBuntu/actions/workflows/ci.yml)
+[![Coverage](https://coveralls.io/repos/github/CharlesBinard/SecurBuntu/badge.svg?branch=main)](https://coveralls.io/github/CharlesBinard/SecurBuntu?branch=main)
 
 ---
 
