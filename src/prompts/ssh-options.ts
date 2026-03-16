@@ -23,6 +23,7 @@ export async function promptSshOptions(options: HardeningOptions): Promise<void>
           const port = parseInt(value, 10)
           if (Number.isNaN(port)) return "Must be a number"
           if (port < 1024 || port > 65_535) return "Port must be between 1024 and 65535"
+          return undefined
         },
       }),
     )
@@ -92,6 +93,7 @@ export async function promptSshOptions(options: HardeningOptions): Promise<void>
         const n = parseInt(value, 10)
         if (Number.isNaN(n)) return "Must be a number"
         if (n < 1 || n > 10) return "Must be between 1 and 10"
+        return undefined
       },
     }),
   )

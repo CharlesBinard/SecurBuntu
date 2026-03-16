@@ -29,6 +29,7 @@ async function promptSudoUser(server: ServerInfo, options: HardeningOptions): Pr
       validate(value) {
         if (!value?.trim()) return "Username is required"
         if (!/^[a-z_][a-z0-9_-]*$/.test(value)) return "Invalid username format"
+        return undefined
       },
     }),
   )
@@ -39,6 +40,7 @@ async function promptSudoUser(server: ServerInfo, options: HardeningOptions): Pr
       message: `Enter password for ${sudoUsername}`,
       validate(value) {
         if (!value || value.length < 8) return "Password must be at least 8 characters"
+        return undefined
       },
     }),
   )
@@ -68,6 +70,7 @@ async function promptPersonalKey(options: HardeningOptions): Promise<boolean> {
         if (!existsSync(resolved)) return `File not found: ${resolved}`
         const content = readFileSync(resolved, "utf-8").trim()
         if (!content.startsWith("ssh-")) return "Invalid public key format (must start with ssh-)"
+        return undefined
       },
     }),
   )

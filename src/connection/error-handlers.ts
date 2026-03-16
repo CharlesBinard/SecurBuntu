@@ -51,6 +51,7 @@ export async function handleSudoPasswordPrompt(
     message: "Enter the sudo password",
     validate(value) {
       if (!value) return "Password is required"
+      return undefined
     },
   })
   if (isCancel(sudoPw)) {

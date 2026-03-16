@@ -19,6 +19,7 @@ async function promptAuthCredentials(
           if (!value?.trim()) return "Key path is required"
           const resolved = value.replace("~", process.env.HOME ?? "")
           if (!existsSync(resolved)) return `File not found: ${resolved}`
+          return undefined
         },
       }),
     )
@@ -47,6 +48,7 @@ async function promptAuthCredentials(
       message: "Enter the SSH password",
       validate(value) {
         if (!value) return "Password is required"
+        return undefined
       },
     }),
   )
@@ -83,6 +85,7 @@ export async function promptConnection(): Promise<ConnectionConfig> {
       placeholder: "192.168.1.100",
       validate(value) {
         if (!value?.trim()) return "IP address is required"
+        return undefined
       },
     }),
   )
@@ -96,6 +99,7 @@ export async function promptConnection(): Promise<ConnectionConfig> {
         if (!value?.trim()) return "Username is required"
         if (!/^[a-z_][a-z0-9_-]*$/.test(value))
           return "Invalid username format (lowercase letters, digits, hyphens, underscores)"
+        return undefined
       },
     }),
   )
@@ -109,6 +113,7 @@ export async function promptConnection(): Promise<ConnectionConfig> {
         if (!value) return "Port is required"
         const port = parseInt(value, 10)
         if (Number.isNaN(port) || port < 1 || port > 65_535) return "Port must be between 1 and 65535"
+        return undefined
       },
     }),
   )

@@ -32,6 +32,7 @@ function validatePortInput(value: string | undefined): string | undefined {
   if (parts.length === 2 && parseInt(parts[0] ?? "0", 10) >= parseInt(parts[1] ?? "0", 10)) {
     return "Range start must be less than range end"
   }
+  return undefined
 }
 
 async function promptCustomUfwPorts(): Promise<{ port: string; protocol: "tcp" | "udp" | "both"; comment: string }[]> {
