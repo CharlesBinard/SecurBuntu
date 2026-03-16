@@ -1,6 +1,31 @@
 import { existsSync } from "fs"
 import type { ServerInfo, SshClient } from "../types.ts"
 
+export interface LocalSshKey {
+  path: string
+  type: string
+}
+
+export function detectAllLocalKeys(): LocalSshKey[] {
+  const home = process.env.HOME ?? ""
+  if (!home) return []
+  const sshDir = `${home}/.ssh`
+  const patterns: Array<{ filename: string; type: string }> = [
+    { filename: "id_ed25519", type: "ed25519" },
+    { filename: "id_ecdsa", type: "ecdsa" },
+    { filename: "id_rsa", type: "rsa" },
+  ]
+
+  const keys: LocalSshKey[] = []
+  for (const { filename, type } of patterns) {
+    const fullPath = `${sshDir}/${filename}`
+    if (existsSync(fullPath)) {
+      keys.push({ path: fullPath, type })
+    }
+  }
+  return keys
+}
+
 export function detectDefaultKeyPath(): string | undefined {
   const home = process.env.HOME ?? ""
   const candidates = [`${home}/.ssh/id_ed25519`, `${home}/.ssh/id_ecdsa`, `${home}/.ssh/id_rsa`]
