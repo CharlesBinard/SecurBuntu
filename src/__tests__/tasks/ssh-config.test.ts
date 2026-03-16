@@ -14,6 +14,9 @@ const defaultOptions: HardeningOptions = {
   installFail2ban: false,
   enableAutoUpdates: false,
   enableSysctl: false,
+  permitRootLogin: "yes",
+  disableX11Forwarding: false,
+  maxAuthTries: 6,
   enableSshBanner: false,
 }
 
@@ -60,6 +63,7 @@ describe("runHardenSshConfig", () => {
       ...defaultOptions,
       createSudoUser: true,
       sudoUsername: "deploy",
+      permitRootLogin: "no" as const,
     }
 
     const result = await runHardenSshConfig(ssh, options, defaultServer)
@@ -77,6 +81,7 @@ describe("runHardenSshConfig", () => {
     const options = {
       ...defaultOptions,
       configureCoolify: true,
+      permitRootLogin: "prohibit-password" as const,
     }
 
     const result = await runHardenSshConfig(ssh, options, defaultServer)
@@ -228,7 +233,7 @@ describe("runHardenSshConfig", () => {
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("echo ok", { stdout: "ok" })
 
-    const options = { ...defaultOptions, changeSshPort: true, newSshPort: 22 }
+    const options = { ...defaultOptions, changeSshPort: true, newSshPort: 22, disableX11Forwarding: true, maxAuthTries: 5 }
 
     await runHardenSshConfig(ssh, options, defaultServer)
 

@@ -14,6 +14,9 @@ const defaultOptions: HardeningOptions = {
   installFail2ban: false,
   enableAutoUpdates: false,
   enableSysctl: false,
+  permitRootLogin: "yes",
+  disableX11Forwarding: true,
+  maxAuthTries: 5,
   enableSshBanner: false,
 }
 

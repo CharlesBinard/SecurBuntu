@@ -1,7 +1,8 @@
 import type { HardeningTask } from "../types.js"
 
 export const runHardenSshConfig: HardeningTask = async (ssh, options, server) => {
-  const hasChanges = options.changeSshPort || options.disablePasswordAuth || options.configureCoolify || options.createSudoUser || options.enableSshBanner
+  const hasChanges = options.changeSshPort || options.disablePasswordAuth || options.enableSshBanner ||
+    options.permitRootLogin !== "yes" || options.disableX11Forwarding || options.maxAuthTries !== 6
   if (!hasChanges) {
     return {
       name: "SSH Hardening",
@@ -13,17 +14,7 @@ export const runHardenSshConfig: HardeningTask = async (ssh, options, server) =>
   const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
   const date = new Date().toISOString().split("T")[0] ?? "unknown"
 
-  let permitRootLogin: string
-  if (options.configureCoolify) {
-    permitRootLogin = "prohibit-password"
-  } else if (options.createSudoUser) {
-    permitRootLogin = "no"
-  } else if (server.isRoot) {
-    permitRootLogin = "prohibit-password"
-  } else {
-    permitRootLogin = "no"
-  }
-
+  const permitRootLogin = options.permitRootLogin
   const passwordAuth = options.disablePasswordAuth ? "no" : "yes"
 
   // Write SSH banner if requested
@@ -46,8 +37,8 @@ export const runHardenSshConfig: HardeningTask = async (ssh, options, server) =>
     `PasswordAuthentication ${passwordAuth}`,
     "PubkeyAuthentication yes",
     "AuthorizedKeysFile .ssh/authorized_keys",
-    "X11Forwarding no",
-    "MaxAuthTries 5",
+    `X11Forwarding ${options.disableX11Forwarding ? "no" : "yes"}`,
+    `MaxAuthTries ${options.maxAuthTries}`,
   ]
 
   if (options.enableSshBanner) {
@@ -121,6 +112,8 @@ export const runHardenSshConfig: HardeningTask = async (ssh, options, server) =>
     `Port: ${sshPort}`,
     `PermitRootLogin: ${permitRootLogin}`,
     `PasswordAuthentication: ${passwordAuth}`,
+    `X11Forwarding: ${options.disableX11Forwarding ? "no" : "yes"}`,
+    `MaxAuthTries: ${options.maxAuthTries}`,
   ]
   if (options.enableSshBanner) {
     detailParts.push("Banner: /etc/issue.net")

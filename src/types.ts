@@ -26,7 +26,10 @@ export interface HardeningOptions {
   configureCoolify: boolean
   changeSshPort: boolean
   newSshPort?: number
+  permitRootLogin: "no" | "prohibit-password" | "yes"
   disablePasswordAuth: boolean
+  disableX11Forwarding: boolean
+  maxAuthTries: number
   installUfw: boolean
   ufwPorts: UfwPort[]
   installFail2ban: boolean

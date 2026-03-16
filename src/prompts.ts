@@ -136,7 +136,10 @@ export async function promptHardeningOptions(
     addPersonalKey: false,
     configureCoolify: false,
     changeSshPort: false,
+    permitRootLogin: "yes",
     disablePasswordAuth: false,
+    disableX11Forwarding: true,
+    maxAuthTries: 5,
     installUfw: false,
     ufwPorts: [],
     installFail2ban: false,
@@ -241,7 +244,56 @@ export async function promptHardeningOptions(
   }))
   options.enableSshBanner = enableBanner
 
-  // 5. Disable password auth (with hard gate)
+  // 5. Root login policy
+  p.log.info(pc.dim(
+    "Controls whether root can log in via SSH.\n" +
+    "  • 'no' = root cannot log in at all (most secure, but breaks Coolify/tools that need root)\n" +
+    "  • 'key only' = root can log in with SSH key only (recommended for Coolify)\n" +
+    "  • 'yes' = root can log in with password or key (least secure)"
+  ))
+
+  const rootLoginChoice = await p.select({
+    message: "Root SSH login policy",
+    options: [
+      { value: "prohibit-password" as const, label: "Key only (prohibit-password)", hint: "recommended" },
+      { value: "no" as const, label: "Disabled (no root login)" },
+      { value: "yes" as const, label: "Allowed (keep as-is)", hint: "least secure" },
+    ],
+    initialValue: options.configureCoolify ? "prohibit-password" as const : "prohibit-password" as const,
+  })
+  if (isCancel(rootLoginChoice)) handleCancel()
+  options.permitRootLogin = rootLoginChoice
+
+  // 6. X11 Forwarding
+  p.log.info(pc.dim(
+    "X11 forwarding allows graphical apps from the server to display on your machine.\n" +
+    "  Disabling it is recommended unless you specifically need remote GUI apps."
+  ))
+  const disableX11 = unwrapBoolean(await p.confirm({
+    message: "Disable X11 forwarding?",
+    initialValue: true,
+  }))
+  options.disableX11Forwarding = disableX11
+
+  // 7. Max auth tries
+  p.log.info(pc.dim(
+    "Limits the number of authentication attempts per connection.\n" +
+    "  Lower values protect against brute-force attacks. Default SSH is 6, we recommend 3-5."
+  ))
+  const maxTriesStr = unwrapText(await p.text({
+    message: "Maximum authentication attempts per connection",
+    placeholder: "5",
+    defaultValue: "5",
+    validate(value) {
+      if (!value) return "Must be a number"
+      const n = parseInt(value, 10)
+      if (isNaN(n)) return "Must be a number"
+      if (n < 1 || n > 10) return "Must be between 1 and 10"
+    },
+  }))
+  options.maxAuthTries = parseInt(maxTriesStr, 10)
+
+  // 8. Disable password auth (with hard gate)
   const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
   const targetUser = options.createSudoUser && options.sudoUsername
     ? options.sudoUsername
@@ -427,8 +479,11 @@ export async function promptConfirmation(
   if (options.addPersonalKey) lines.push(`  Add SSH key: ${pc.cyan(options.personalKeyPath ?? "")}`)
   lines.push(`  Coolify: ${options.configureCoolify ? pc.green("Yes") : pc.dim("No")}`)
   lines.push(`  SSH port: ${options.changeSshPort ? pc.yellow(String(sshPort)) : pc.dim("22 (default)")}`)
+  lines.push(`  Root login: ${options.permitRootLogin === "no" ? pc.green("disabled") : options.permitRootLogin === "prohibit-password" ? pc.cyan("key only") : pc.yellow("allowed")}`)
   lines.push(`  SSH banner: ${options.enableSshBanner ? pc.green("Yes") : pc.dim("No")}`)
   lines.push(`  Disable password auth: ${options.disablePasswordAuth ? pc.green("Yes") : pc.dim("No")}`)
+  lines.push(`  X11 forwarding: ${options.disableX11Forwarding ? pc.green("disabled") : pc.dim("enabled")}`)
+  lines.push(`  Max auth tries: ${pc.cyan(String(options.maxAuthTries))}`)
 
   if (options.installUfw) {
     const ports = options.ufwPorts.map(p => p.port).join(", ")
