@@ -21,6 +21,7 @@ const defaultOptions: HardeningOptions = {
   disableServices: false,
   servicesToDisable: [],
   fixFilePermissions: false,
+  currentSshPort: 22,
 }
 
 const defaultServer: ServerInfo = {
@@ -55,6 +56,24 @@ describe("runHardenSshConfig", () => {
     expect(result.success).toBe(true)
     const config = ssh.writtenFiles.get("/etc/ssh/sshd_config.d/01-securbuntu.conf")
     expect(config).toContain("Port 2222")
+  })
+
+  test("uses currentSshPort when port is not changed", async () => {
+    const ssh = new MockSshClient()
+    ssh.onExec("sshd -t", { exitCode: 0 })
+    ssh.onExec("echo ok", { stdout: "ok" })
+
+    const options = {
+      ...defaultOptions,
+      currentSshPort: 22_012,
+      permitRootLogin: "prohibit-password" as const,
+    }
+
+    const result = await runHardenSshConfig(ssh, options, defaultServer)
+
+    expect(result.success).toBe(true)
+    const config = ssh.writtenFiles.get("/etc/ssh/sshd_config.d/01-securbuntu.conf")
+    expect(config).toContain("Port 22012")
   })
 
   test("sets PermitRootLogin to no when sudo user created", async () => {

@@ -17,6 +17,14 @@ export interface ServerInfo {
   isRoot: boolean
 }
 
+export interface ServerAuditContext {
+  currentSshPort: number
+  ufwActive: boolean
+  fail2banActive: boolean
+  sshKeysInfo: string
+  detectedServices: string[]
+}
+
 export interface HardeningOptions {
   createSudoUser: boolean
   sudoUsername?: string
@@ -40,6 +48,7 @@ export interface HardeningOptions {
   disableServices: boolean
   servicesToDisable: string[]
   fixFilePermissions: boolean
+  currentSshPort: number
 }
 
 export interface UfwPort {

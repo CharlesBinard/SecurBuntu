@@ -80,10 +80,13 @@ async function promptCustomUfwPorts(): Promise<{ port: string; protocol: "tcp" |
   return customPorts
 }
 
-export async function promptUfwOptions(options: HardeningOptions, sshPort: number): Promise<void> {
+export async function promptUfwOptions(options: HardeningOptions, sshPort: number, ufwActive: boolean): Promise<void> {
+  const ufwMessage = ufwActive
+    ? "UFW is already active. Do you want to update firewall rules?"
+    : "Do you want to install and configure UFW (firewall)?"
   const installUfw = unwrapBoolean(
     await p.confirm({
-      message: "Do you want to install and configure UFW (firewall)?",
+      message: ufwMessage,
     }),
   )
 

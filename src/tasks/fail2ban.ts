@@ -19,7 +19,7 @@ export const runConfigureFail2ban: HardeningTask = async (ssh, options, server) 
     }
   }
 
-  const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
+  const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : options.currentSshPort
   const isModernUbuntu = isVersionGte(server.ubuntuVersion, "24.04")
 
   let jailConfig: string

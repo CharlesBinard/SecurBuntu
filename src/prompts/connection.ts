@@ -1,29 +1,63 @@
 import * as p from "@clack/prompts"
 import { existsSync } from "fs"
 import pc from "picocolors"
-import { checkSshCopyIdInstalled, checkSshpassInstalled, detectDefaultKeyPath } from "../ssh/index.ts"
+import {
+  checkSshCopyIdInstalled,
+  checkSshpassInstalled,
+  detectAllLocalKeys,
+  detectDefaultKeyPath,
+} from "../ssh/index.ts"
 import type { ConnectionConfig } from "../types.ts"
 import { handleCancel, isCancel, unwrapText } from "./helpers.ts"
+
+async function promptManualKeyPath(): Promise<string> {
+  const defaultKey = detectDefaultKeyPath()
+  const keyPath = unwrapText(
+    await p.text({
+      message: "Path to your private SSH key",
+      placeholder: defaultKey ?? "~/.ssh/id_ed25519",
+      defaultValue: defaultKey,
+      validate(value) {
+        if (!value?.trim()) return "Key path is required"
+        const resolved = value.replace("~", process.env.HOME ?? "")
+        if (!existsSync(resolved)) return `File not found: ${resolved}`
+        return undefined
+      },
+    }),
+  )
+  return keyPath.replace("~", process.env.HOME ?? "")
+}
 
 async function promptAuthCredentials(
   authMethod: "key" | "password" | "copy",
 ): Promise<{ privateKeyPath?: string; password?: string }> {
   if (authMethod === "key" || authMethod === "copy") {
-    const defaultKey = detectDefaultKeyPath()
-    const keyPath = unwrapText(
-      await p.text({
-        message: "Path to your private SSH key",
-        placeholder: defaultKey ?? "~/.ssh/id_ed25519",
-        defaultValue: defaultKey,
-        validate(value) {
-          if (!value?.trim()) return "Key path is required"
-          const resolved = value.replace("~", process.env.HOME ?? "")
-          if (!existsSync(resolved)) return `File not found: ${resolved}`
-          return undefined
-        },
-      }),
-    )
-    const privateKeyPath = keyPath.replace("~", process.env.HOME ?? "")
+    const localKeys = detectAllLocalKeys()
+    let privateKeyPath: string
+
+    if (localKeys.length > 0) {
+      const keyOptions = [
+        ...localKeys.map((k) => ({
+          value: k.path,
+          label: `~/.ssh/${k.path.split("/").pop()} (${k.type})`,
+        })),
+        { value: "manual", label: "Other (enter path manually)" },
+      ]
+
+      const choice = await p.select({
+        message: "Select your SSH key",
+        options: keyOptions,
+      })
+      if (isCancel(choice)) handleCancel()
+
+      if (choice === "manual") {
+        privateKeyPath = await promptManualKeyPath()
+      } else {
+        privateKeyPath = choice
+      }
+    } else {
+      privateKeyPath = await promptManualKeyPath()
+    }
 
     if (authMethod === "copy") {
       await validateCopyKeyPrerequisites(privateKeyPath)

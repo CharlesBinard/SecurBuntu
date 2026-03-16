@@ -19,13 +19,15 @@ function formatServicesSummary(options: HardeningOptions): string {
 }
 
 function buildSummaryLines(options: HardeningOptions): string[] {
-  const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : 22
+  const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : options.currentSshPort
   const lines: string[] = []
 
   if (options.createSudoUser) lines.push(`  Create sudo user: ${pc.cyan(options.sudoUsername ?? "")}`)
   if (options.addPersonalKey) lines.push(`  Add SSH key: ${pc.cyan(options.personalKeyPath ?? "")}`)
   lines.push(`  Coolify: ${yesNo(options.configureCoolify)}`)
-  lines.push(`  SSH port: ${options.changeSshPort ? pc.yellow(String(sshPort)) : pc.dim("22 (default)")}`)
+  lines.push(
+    `  SSH port: ${options.changeSshPort ? pc.yellow(String(sshPort)) : pc.dim(String(options.currentSshPort))}`,
+  )
   lines.push(`  Root login: ${formatRootLogin(options.permitRootLogin)}`)
   lines.push(`  SSH banner: ${yesNo(options.enableSshBanner)}`)
   lines.push(`  Disable password auth: ${yesNo(options.disablePasswordAuth)}`)
