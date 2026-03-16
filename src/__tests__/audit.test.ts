@@ -127,7 +127,7 @@ describe("displayAudit", () => {
     }
     displayAudit(result)
     expect(noteCalls).toHaveLength(1)
-    expect(noteCalls[0]!.title).toBe("Server Security Audit")
+    expect(noteCalls[0]?.title).toBe("Server Security Audit")
   })
 
   test("colorizes 'active' status as green (good)", () => {
@@ -135,8 +135,8 @@ describe("displayAudit", () => {
       checks: [{ name: "Firewall", status: "active" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("Firewall")
-    expect(noteCalls[0]!.message).toContain("active")
+    expect(noteCalls[0]?.message).toContain("Firewall")
+    expect(noteCalls[0]?.message).toContain("active")
   })
 
   test("colorizes 'enabled' status as green (good)", () => {
@@ -144,7 +144,7 @@ describe("displayAudit", () => {
       checks: [{ name: "Auto-updates", status: "enabled" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("enabled")
+    expect(noteCalls[0]?.message).toContain("enabled")
   })
 
   test("colorizes 'hardened' status as green (good)", () => {
@@ -152,7 +152,7 @@ describe("displayAudit", () => {
       checks: [{ name: "Sysctl", status: "hardened" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("hardened")
+    expect(noteCalls[0]?.message).toContain("hardened")
   })
 
   test("colorizes 'no' status as green (good)", () => {
@@ -160,7 +160,7 @@ describe("displayAudit", () => {
       checks: [{ name: "Root Login", status: "no" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("no")
+    expect(noteCalls[0]?.message).toContain("no")
   })
 
   test("colorizes 'prohibit-password' status as green (good)", () => {
@@ -168,7 +168,7 @@ describe("displayAudit", () => {
       checks: [{ name: "Root Login", status: "prohibit-password" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("prohibit-password")
+    expect(noteCalls[0]?.message).toContain("prohibit-password")
   })
 
   test("colorizes 'not installed' status as yellow (bad)", () => {
@@ -176,7 +176,7 @@ describe("displayAudit", () => {
       checks: [{ name: "Fail2ban", status: "not installed" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("not installed")
+    expect(noteCalls[0]?.message).toContain("not installed")
   })
 
   test("colorizes 'not configured' status as yellow (bad)", () => {
@@ -184,7 +184,7 @@ describe("displayAudit", () => {
       checks: [{ name: "Auto-updates", status: "not configured" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("not configured")
+    expect(noteCalls[0]?.message).toContain("not configured")
   })
 
   test("colorizes 'yes' status as yellow (bad)", () => {
@@ -192,7 +192,7 @@ describe("displayAudit", () => {
       checks: [{ name: "Password Auth", status: "yes" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("yes")
+    expect(noteCalls[0]?.message).toContain("yes")
   })
 
   test("colorizes 'yes (default)' status as yellow (bad)", () => {
@@ -200,7 +200,7 @@ describe("displayAudit", () => {
       checks: [{ name: "Root Login", status: "yes (default)" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("yes (default)")
+    expect(noteCalls[0]?.message).toContain("yes (default)")
   })
 
   test("colorizes 'default' status as yellow (bad)", () => {
@@ -208,7 +208,7 @@ describe("displayAudit", () => {
       checks: [{ name: "Password Auth", status: "default" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("default")
+    expect(noteCalls[0]?.message).toContain("default")
   })
 
   test("colorizes 'not set' status as yellow (bad)", () => {
@@ -216,7 +216,7 @@ describe("displayAudit", () => {
       checks: [{ name: "SSH Banner", status: "not set" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("not set")
+    expect(noteCalls[0]?.message).toContain("not set")
   })
 
   test("colorizes neutral status as cyan (neither good nor bad)", () => {
@@ -224,7 +224,7 @@ describe("displayAudit", () => {
       checks: [{ name: "SSH Port", status: "2222" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("2222")
+    expect(noteCalls[0]?.message).toContain("2222")
   })
 
   test("appends detail field when present", () => {
@@ -232,7 +232,7 @@ describe("displayAudit", () => {
       checks: [{ name: "Sudo Users", status: "2 users", detail: "root, admin" }],
     }
     displayAudit(result)
-    expect(noteCalls[0]!.message).toContain("root, admin")
+    expect(noteCalls[0]?.message).toContain("root, admin")
   })
 
   test("does not append detail when absent", () => {
@@ -241,7 +241,7 @@ describe("displayAudit", () => {
     }
     displayAudit(result)
     // The message should contain the check but no extra detail text
-    const message = noteCalls[0]!.message
+    const message = noteCalls[0]?.message
     expect(message).toContain("Firewall")
     expect(message).toContain("active")
   })
@@ -255,7 +255,7 @@ describe("displayAudit", () => {
       ],
     }
     displayAudit(result)
-    const lines = noteCalls[0]!.message.split("\n")
+    const lines = noteCalls[0]?.message.split("\n")
     expect(lines).toHaveLength(3)
   })
 })

@@ -133,8 +133,8 @@ describe("DryRunSshClient.displaySummary", () => {
     dryRun.displaySummary()
 
     expect(noteCalls).toHaveLength(1)
-    expect(noteCalls[0]!.message).toContain("1. apt update")
-    expect(noteCalls[0]!.message).toContain("2. systemctl restart sshd")
-    expect(noteCalls[0]!.title).toContain("Dry-run summary")
+    expect(noteCalls[0]?.message).toContain("1. apt update")
+    expect(noteCalls[0]?.message).toContain("2. systemctl restart sshd")
+    expect(noteCalls[0]?.title).toContain("Dry-run summary")
   })
 })
