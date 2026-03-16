@@ -21,6 +21,7 @@ const defaultOptions: HardeningOptions = {
   disableServices: false,
   servicesToDisable: [],
   fixFilePermissions: false,
+  currentSshPort: 22,
 }
 
 const makeServer = (version: string): ServerInfo => ({
@@ -86,6 +87,20 @@ describe("runConfigureFail2ban", () => {
 
     const config = ssh.writtenFiles.get("/etc/fail2ban/jail.d/securbuntu.local")
     expect(config).toContain("port = 2222")
+  })
+
+  test("uses currentSshPort when port is not changed", async () => {
+    const ssh = new MockSshClient()
+    const options = {
+      ...defaultOptions,
+      installFail2ban: true,
+      currentSshPort: 22012,
+    }
+
+    await runConfigureFail2ban(ssh, options, makeServer("24.04"))
+
+    const config = ssh.writtenFiles.get("/etc/fail2ban/jail.d/securbuntu.local")
+    expect(config).toContain("port = 22012")
   })
 
   test("fails when install fails", async () => {
