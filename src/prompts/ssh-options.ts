@@ -3,11 +3,11 @@ import pc from "picocolors"
 import type { HardeningOptions } from "../types.ts"
 import { handleCancel, isCancel, unwrapBoolean, unwrapText } from "./helpers.ts"
 
-export async function promptSshOptions(options: HardeningOptions): Promise<void> {
+export async function promptSshOptions(options: HardeningOptions, currentSshPort: number): Promise<void> {
   // Change SSH port
   const changePort = unwrapBoolean(
     await p.confirm({
-      message: "Do you want to change the default SSH port (22)?",
+      message: `Do you want to change the SSH port? (currently ${currentSshPort})`,
       initialValue: false,
     }),
   )
