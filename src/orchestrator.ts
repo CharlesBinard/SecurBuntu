@@ -1,7 +1,6 @@
 import { confirm, isCancel, log, outro, spinner } from "@clack/prompts"
 import pc from "picocolors"
 import { displayAudit, runAudit } from "./audit/index.ts"
-import { connectWithRetry } from "./connection/index.ts"
 import { DryRunClient } from "./dry-run.ts"
 import { LoggingClient } from "./logging.ts"
 import {
@@ -16,7 +15,7 @@ import { detectServerInfo } from "./ssh/index.ts"
 import { executeTasks } from "./tasks/index.ts"
 import type {
   AuditResult,
-  ConnectionConfig,
+  ConnectionResult,
   HardeningOptions,
   Report,
   ServerAuditContext,
@@ -131,7 +130,8 @@ async function exportLogIfNeeded(loggingClient: LoggingClient, host: string, wan
 
 async function executeAndReport(
   client: SystemClient,
-  connectionConfig: ConnectionConfig,
+  host: string,
+  username: string,
   options: HardeningOptions,
   serverInfo: ServerInfo,
   auditResult: AuditResult,
@@ -157,8 +157,8 @@ async function executeAndReport(
   s.stop("Post-hardening audit complete")
 
   const report: Report = {
-    serverIp: connectionConfig.host,
-    connectionUser: connectionConfig.username,
+    serverIp: host,
+    connectionUser: username,
     sudoUser: options.createSudoUser ? options.sudoUsername : undefined,
     date: new Date().toISOString().split("T")[0] ?? "",
     ubuntuVersion: serverInfo.ubuntuVersion,
@@ -170,7 +170,7 @@ async function executeAndReport(
 
   displayReport(report)
 
-  await exportLogIfNeeded(loggingClient, connectionConfig.host, wantLog)
+  await exportLogIfNeeded(loggingClient, host, wantLog)
 
   const wantExport = await promptExportReport()
   if (wantExport) {
@@ -181,17 +181,17 @@ async function executeAndReport(
   outro(pc.green(pc.bold("Server hardening complete!")))
 }
 
-export async function run(args: RunArgs): Promise<void> {
+export async function run(args: RunArgs, connection: ConnectionResult): Promise<void> {
   const { isDryRun, wantLog, isAuditOnly } = args
+  const { client, host, username, mode } = connection
 
-  const { client, connectionConfig } = await connectWithRetry()
   const s = spinner()
 
   try {
     const { serverInfo, auditResult } = await detectAndAudit(client, s)
 
     if (isAuditOnly) {
-      await handleAuditOnlyMode(client, auditResult, connectionConfig.host)
+      await handleAuditOnlyMode(client, auditResult, host)
       return
     }
 
@@ -221,9 +221,9 @@ export async function run(args: RunArgs): Promise<void> {
       detectedServices,
     }
 
-    const options = await promptHardeningOptions(serverInfo, client, auditContext)
+    const options = await promptHardeningOptions(serverInfo, client, auditContext, mode, username)
 
-    const confirmation = await promptConfirmation(connectionConfig.host, options)
+    const confirmation = await promptConfirmation(host, options)
     if (!confirmation) {
       outro(pc.dim(`Aborted. No changes were made${isDryRun ? "." : " (except system update)."}`))
       client.close()
@@ -235,7 +235,8 @@ export async function run(args: RunArgs): Promise<void> {
 
     await executeAndReport(
       client,
-      connectionConfig,
+      host,
+      username,
       options,
       serverInfo,
       auditResult,
