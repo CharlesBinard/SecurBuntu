@@ -1,17 +1,59 @@
-import { appendFileSync, existsSync, mkdirSync } from "fs"
+import { appendFileSync, existsSync, mkdirSync, unlinkSync, writeFileSync } from "fs"
+import { tmpdir } from "os"
+import { join } from "path"
 import { resolveHome } from "../platform/home.ts"
+import type { HostCapabilities, HostPlatform } from "../types.ts"
 
 export type HostKeyResult =
   | { known: true }
   | { known: false; fingerprint: string; rawKeys: string }
   | { known: false; fingerprint: null; rawKeys: "" }
 
-export async function fetchHostKeyFingerprint(host: string, port: number): Promise<HostKeyResult> {
-  const home = resolveHome()
-  const knownHostsPath = `${home}/.ssh/known_hosts`
+async function computeFingerprint(keyscanOutput: string, platform: HostPlatform): Promise<string> {
+  if (platform.os === "windows") {
+    // On Windows: write to a temp file because /dev/stdin is unavailable
+    const tempFile = join(tmpdir(), `securbuntu-keyscan-${Date.now()}.txt`)
+    try {
+      writeFileSync(tempFile, keyscanOutput, "utf-8")
+      const proc = Bun.spawn(["ssh-keygen", "-lf", tempFile], { stdout: "pipe", stderr: "pipe" })
+      const output = await new Response(proc.stdout).text()
+      await proc.exited
+      return output
+    } finally {
+      try {
+        unlinkSync(tempFile)
+      } catch {
+        // Best-effort cleanup
+      }
+    }
+  }
 
-  // Check if host is already in known_hosts
-  if (existsSync(knownHostsPath)) {
+  const proc = Bun.spawn(["ssh-keygen", "-lf", "/dev/stdin"], {
+    stdin: Buffer.from(keyscanOutput),
+    stdout: "pipe",
+    stderr: "pipe",
+  })
+  const output = await new Response(proc.stdout).text()
+  await proc.exited
+  return output
+}
+
+export async function fetchHostKeyFingerprint(
+  host: string,
+  port: number,
+  platform: HostPlatform,
+  capabilities: HostCapabilities,
+): Promise<HostKeyResult> {
+  if (!capabilities.sshKeyscan) {
+    return { known: false, fingerprint: null, rawKeys: "" }
+  }
+
+  const home = resolveHome()
+  const sshDir = join(home, ".ssh")
+  const knownHostsPath = join(sshDir, "known_hosts")
+
+  // Check if host is already in known_hosts (only when ssh-keygen is available)
+  if (capabilities.sshKeygen && existsSync(knownHostsPath)) {
     const hostLookup = port === 22 ? host : `[${host}]:${port}`
     const checkProc = Bun.spawn(["ssh-keygen", "-F", hostLookup, "-f", knownHostsPath], {
       stdout: "pipe",
@@ -32,19 +74,11 @@ export async function fetchHostKeyFingerprint(host: string, port: number): Promi
   const keyscanOutput = await new Response(keyscanProc.stdout).text()
   await keyscanProc.exited
 
-  if (!keyscanOutput.trim()) {
+  if (!(keyscanOutput.trim() && capabilities.sshKeygen)) {
     return { known: false, fingerprint: null, rawKeys: "" }
   }
 
-  // Compute the SHA256 fingerprint
-  const fingerprintProc = Bun.spawn(["ssh-keygen", "-lf", "/dev/stdin"], {
-    stdin: Buffer.from(keyscanOutput),
-    stdout: "pipe",
-    stderr: "pipe",
-  })
-  const fingerprintOutput = await new Response(fingerprintProc.stdout).text()
-  await fingerprintProc.exited
-
+  const fingerprintOutput = await computeFingerprint(keyscanOutput, platform)
   const firstLine = fingerprintOutput.trim().split("\n")[0] ?? ""
   if (!firstLine) {
     return { known: false, fingerprint: null, rawKeys: "" }
@@ -55,8 +89,8 @@ export async function fetchHostKeyFingerprint(host: string, port: number): Promi
 
 export function addToKnownHosts(rawKeys: string): void {
   const home = resolveHome()
-  const sshDir = `${home}/.ssh`
-  const knownHostsPath = `${sshDir}/known_hosts`
+  const sshDir = join(home, ".ssh")
+  const knownHostsPath = join(sshDir, "known_hosts")
   mkdirSync(sshDir, { recursive: true })
   appendFileSync(knownHostsPath, `${rawKeys}\n`, "utf-8")
 }
