@@ -38,6 +38,7 @@ function makeReport(overrides: Partial<Report> = {}): Report {
   return {
     serverIp: "192.168.1.100",
     connectionUser: "root",
+    mode: "ssh",
     date: "2026-03-15",
     ubuntuVersion: "24.04",
     results: [

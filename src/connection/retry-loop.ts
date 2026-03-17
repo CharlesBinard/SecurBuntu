@@ -2,11 +2,11 @@ import { log, spinner } from "@clack/prompts"
 import pc from "picocolors"
 import { promptConnection } from "../prompts/index.ts"
 import { connect } from "../ssh/index.ts"
-import type { ConnectionConfig, SshClient } from "../types.ts"
+import type { ConnectionConfig, SystemClient } from "../types.ts"
 import { handleConnectionError, handleCopyAuthMethod } from "./error-handlers.ts"
 import { verifyHostKey } from "./verify-host.ts"
 
-export async function connectWithRetry(): Promise<{ ssh: SshClient; connectionConfig: ConnectionConfig }> {
+export async function connectWithRetry(): Promise<{ client: SystemClient; connectionConfig: ConnectionConfig }> {
   const s = spinner()
 
   while (true) {
@@ -30,13 +30,13 @@ export async function connectWithRetry(): Promise<{ ssh: SshClient; connectionCo
     s.start(`Connecting to ${connectionConfig.host}...`)
 
     try {
-      const ssh = await connect(connectionConfig)
+      const client = await connect(connectionConfig)
       s.stop(`Connected to ${pc.green(connectionConfig.host)}`)
-      return { ssh, connectionConfig }
+      return { client, connectionConfig }
     } catch (error) {
       const result = await handleConnectionError(error, connectionConfig, s)
       if (result === "retry") continue
-      return { ssh: result, connectionConfig }
+      return { client: result, connectionConfig }
     }
   }
 }

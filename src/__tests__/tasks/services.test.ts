@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { runDisableServices } from "../../tasks/services.ts"
 import type { HardeningOptions, ServerInfo } from "../../types.ts"
-import { MockSshClient } from "../helpers/mock-ssh.ts"
+import { MockSystemClient } from "../helpers/mock-ssh.ts"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,
@@ -22,6 +22,7 @@ const defaultOptions: HardeningOptions = {
   servicesToDisable: [],
   fixFilePermissions: false,
   currentSshPort: 22,
+  connectionUsername: "root",
 }
 
 const defaultServer: ServerInfo = {
@@ -34,14 +35,14 @@ const defaultServer: ServerInfo = {
 
 describe("runDisableServices", () => {
   test("skips when not requested", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runDisableServices(ssh, defaultOptions, defaultServer)
     expect(result.success).toBe(true)
     expect(result.message).toStartWith("Skipped")
   })
 
   test("skips when enabled but no services selected", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = { ...defaultOptions, disableServices: true, servicesToDisable: [] }
     const result = await runDisableServices(ssh, options, defaultServer)
     expect(result.success).toBe(true)
@@ -49,7 +50,7 @@ describe("runDisableServices", () => {
   })
 
   test("disables and masks selected services", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = {
       ...defaultOptions,
       disableServices: true,
@@ -67,7 +68,7 @@ describe("runDisableServices", () => {
   })
 
   test("reports partial failure", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("systemctl disable --now avahi-daemon", { exitCode: 1 })
 
     const options = {
@@ -85,7 +86,7 @@ describe("runDisableServices", () => {
   })
 
   test("reports total failure", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("systemctl disable --now", { exitCode: 1 })
 
     const options = {
@@ -101,7 +102,7 @@ describe("runDisableServices", () => {
   })
 
   test("fails service when mask fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("systemctl mask cups", { exitCode: 1 })
 
     const options = {

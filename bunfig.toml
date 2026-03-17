@@ -1,0 +1,18 @@
+[test]
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "src/prompts/confirmation.ts",
+  "src/prompts/connection.ts",
+  "src/prompts/hardening.ts",
+  "src/prompts/services.ts",
+  "src/prompts/ssh-options.ts",
+  "src/prompts/sysctl.ts",
+  "src/prompts/ufw.ts",
+  "src/connection/error-handlers.ts",
+  "src/connection/retry-loop.ts",
+  "src/connection/verify-host.ts",
+  "src/connection/mode.ts",
+  "src/ssh/host-keys.ts",
+  "src/ssh/copy-key.ts",
+  "src/ssh/connection.ts",
+]

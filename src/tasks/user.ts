@@ -1,6 +1,6 @@
 import type { HardeningTask } from "../types.ts"
 
-export const runCreateUser: HardeningTask = async (ssh, options) => {
+export const runCreateUser: HardeningTask = async (client, options) => {
   if (!(options.createSudoUser && options.sudoUsername && options.sudoPassword)) {
     return {
       name: "Create Sudo User",
@@ -11,11 +11,11 @@ export const runCreateUser: HardeningTask = async (ssh, options) => {
 
   const username = options.sudoUsername
 
-  const checkResult = await ssh.exec(`id ${username} 2>/dev/null && echo exists || echo missing`)
+  const checkResult = await client.exec(`id ${username} 2>/dev/null && echo exists || echo missing`)
   const userExists = checkResult.stdout === "exists"
 
   if (!userExists) {
-    const addResult = await ssh.exec(`adduser --disabled-password --gecos "" ${username}`)
+    const addResult = await client.exec(`adduser --disabled-password --gecos "" ${username}`)
     if (addResult.exitCode !== 0) {
       return {
         name: "Create Sudo User",
@@ -26,7 +26,7 @@ export const runCreateUser: HardeningTask = async (ssh, options) => {
     }
   }
 
-  const pwResult = await ssh.execWithStdin("chpasswd", `${username}:${options.sudoPassword}\n`)
+  const pwResult = await client.execWithStdin("chpasswd", `${username}:${options.sudoPassword}\n`)
   if (pwResult.exitCode !== 0) {
     return {
       name: "Create Sudo User",
@@ -36,7 +36,7 @@ export const runCreateUser: HardeningTask = async (ssh, options) => {
     }
   }
 
-  const sudoResult = await ssh.exec(`usermod -aG sudo ${username}`)
+  const sudoResult = await client.exec(`usermod -aG sudo ${username}`)
   if (sudoResult.exitCode !== 0) {
     return {
       name: "Create Sudo User",
@@ -46,7 +46,7 @@ export const runCreateUser: HardeningTask = async (ssh, options) => {
     }
   }
 
-  const setupResult = await ssh.exec(
+  const setupResult = await client.exec(
     `mkdir -p /home/${username}/.ssh && ` +
       `chmod 700 /home/${username}/.ssh && ` +
       `touch /home/${username}/.ssh/authorized_keys && ` +

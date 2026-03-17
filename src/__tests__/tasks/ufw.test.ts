@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { runConfigureUfw } from "../../tasks/ufw.ts"
 import type { HardeningOptions, ServerInfo } from "../../types.ts"
-import { MockSshClient } from "../helpers/mock-ssh.ts"
+import { MockSystemClient } from "../helpers/mock-ssh.ts"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,
@@ -22,6 +22,7 @@ const defaultOptions: HardeningOptions = {
   servicesToDisable: [],
   fixFilePermissions: false,
   currentSshPort: 22,
+  connectionUsername: "root",
 }
 
 const defaultServer: ServerInfo = {
@@ -34,14 +35,14 @@ const defaultServer: ServerInfo = {
 
 describe("runConfigureUfw", () => {
   test("skips when not requested", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runConfigureUfw(ssh, defaultOptions, defaultServer)
     expect(result.success).toBe(true)
     expect(result.message).toStartWith("Skipped")
   })
 
   test("installs and configures UFW with TCP rule", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = {
       ...defaultOptions,
       installUfw: true,
@@ -57,7 +58,7 @@ describe("runConfigureUfw", () => {
   })
 
   test("handles both protocol with TCP+UDP rules", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = {
       ...defaultOptions,
       installUfw: true,
@@ -72,7 +73,7 @@ describe("runConfigureUfw", () => {
   })
 
   test("reports failed rules", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("ufw allow 8080", { exitCode: 1 })
 
     const options = {
@@ -91,7 +92,7 @@ describe("runConfigureUfw", () => {
   })
 
   test("fails when UFW install fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("apt install -y ufw", { exitCode: 1, stderr: "install error" })
 
     const options = {
@@ -107,7 +108,7 @@ describe("runConfigureUfw", () => {
   })
 
   test("fails when ufw enable fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("ufw --force enable", { exitCode: 1, stderr: "enable error" })
 
     const options = {
@@ -123,7 +124,7 @@ describe("runConfigureUfw", () => {
   })
 
   test("escapes single quotes in comments", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = {
       ...defaultOptions,
       installUfw: true,

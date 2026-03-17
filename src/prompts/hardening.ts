@@ -2,7 +2,7 @@ import * as p from "@clack/prompts"
 import { existsSync, readFileSync } from "fs"
 import pc from "picocolors"
 import { detectDefaultPubKeyPath } from "../ssh/index.ts"
-import type { HardeningOptions, ServerAuditContext, ServerInfo, SshClient } from "../types.ts"
+import type { HardeningOptions, ServerAuditContext, ServerInfo, SystemClient } from "../types.ts"
 import { unwrapBoolean, unwrapText } from "./helpers.ts"
 import { promptServiceOptions } from "./services.ts"
 import { promptSshOptions } from "./ssh-options.ts"
@@ -48,12 +48,12 @@ async function promptSudoUser(server: ServerInfo, options: HardeningOptions): Pr
   options.sudoPassword = sudoPassword
 }
 
-async function promptPersonalKey(options: HardeningOptions): Promise<boolean> {
-  const addKey = unwrapBoolean(
-    await p.confirm({
-      message: "Do you want to add a personal SSH public key to the server?",
-    }),
-  )
+async function promptPersonalKey(options: HardeningOptions, mode: "local" | "ssh"): Promise<boolean> {
+  const message =
+    mode === "local"
+      ? "Do you want to add an SSH public key to authorized_keys?"
+      : "Do you want to add a personal SSH public key to the server?"
+  const addKey = unwrapBoolean(await p.confirm({ message }))
 
   if (!addKey) return false
 
@@ -79,39 +79,66 @@ async function promptPersonalKey(options: HardeningOptions): Promise<boolean> {
   return true
 }
 
-async function promptPasswordAuth(options: HardeningOptions, ssh: SshClient): Promise<void> {
-  const targetUser =
-    options.createSudoUser && options.sudoUsername ? options.sudoUsername : (await ssh.exec("whoami")).stdout
+async function promptPasswordAuth(
+  options: HardeningOptions,
+  client: SystemClient,
+  mode: "local" | "ssh",
+  connectionUsername: string,
+): Promise<void> {
+  const targetUser = options.createSudoUser && options.sudoUsername ? options.sudoUsername : connectionUsername
 
   const targetHome = targetUser === "root" ? "/root" : `/home/${targetUser}`
-  const existingKeysResult = await ssh.exec(
+  const existingKeysResult = await client.exec(
     `test -f '${targetHome}/.ssh/authorized_keys' && grep -c 'ssh-' '${targetHome}/.ssh/authorized_keys' || echo 0`,
   )
   const hasExistingKey = parseInt(existingKeysResult.stdout, 10) > 0
   const willHaveKey = options.addPersonalKey || hasExistingKey
 
   if (willHaveKey) {
-    const disablePw = unwrapBoolean(
-      await p.confirm({
-        message: "Do you want to disable SSH password authentication?",
-        initialValue: true,
-      }),
-    )
-    options.disablePasswordAuth = disablePw
+    if (mode === "local") {
+      // Stricter warning in local mode — default to NOT disabling
+      const disablePw = unwrapBoolean(
+        await p.confirm({
+          message:
+            pc.yellow("You're about to disable SSH password authentication on this machine.") +
+            "\n  Make sure your SSH key is correctly configured. Continue?",
+          initialValue: false,
+        }),
+      )
+      options.disablePasswordAuth = disablePw
+    } else {
+      const disablePw = unwrapBoolean(
+        await p.confirm({
+          message: "Do you want to disable SSH password authentication?",
+          initialValue: true,
+        }),
+      )
+      options.disablePasswordAuth = disablePw
+    }
   } else {
-    p.log.warning(
-      pc.yellow("Cannot disable password authentication: no SSH key found or being added for ") +
-        pc.bold(targetUser) +
-        pc.yellow(". You would be locked out."),
-    )
+    if (mode === "local") {
+      p.log.warning(
+        pc.yellow("Cannot disable password authentication: no SSH keys found in authorized_keys.") +
+          "\n  " +
+          pc.dim("Add a key first to avoid losing remote access."),
+      )
+    } else {
+      p.log.warning(
+        pc.yellow("Cannot disable password authentication: no SSH key found or being added for ") +
+          pc.bold(targetUser) +
+          pc.yellow(". You would be locked out."),
+      )
+    }
     options.disablePasswordAuth = false
   }
 }
 
 export async function promptHardeningOptions(
   server: ServerInfo,
-  ssh: SshClient,
+  client: SystemClient,
   auditContext: ServerAuditContext,
+  mode: "local" | "ssh",
+  connectionUsername: string,
 ): Promise<HardeningOptions> {
   const options: HardeningOptions = {
     createSudoUser: false,
@@ -132,6 +159,7 @@ export async function promptHardeningOptions(
     servicesToDisable: [],
     fixFilePermissions: false,
     currentSshPort: auditContext.currentSshPort,
+    connectionUsername,
   }
 
   await promptSudoUser(server, options)
@@ -143,7 +171,7 @@ export async function promptHardeningOptions(
     p.log.info(pc.dim("No SSH keys found on this server"))
   }
 
-  const addedKey = await promptPersonalKey(options)
+  const addedKey = await promptPersonalKey(options, mode)
 
   // Configure for Coolify
   const coolify = unwrapBoolean(
@@ -166,7 +194,7 @@ export async function promptHardeningOptions(
   }
 
   await promptSshOptions(options, auditContext.currentSshPort)
-  await promptPasswordAuth(options, ssh)
+  await promptPasswordAuth(options, client, mode, connectionUsername)
 
   const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : auditContext.currentSshPort
   await promptUfwOptions(options, sshPort, auditContext.ufwActive)

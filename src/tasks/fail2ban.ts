@@ -1,6 +1,6 @@
 import type { HardeningTask } from "../types.ts"
 
-export const runConfigureFail2ban: HardeningTask = async (ssh, options, server) => {
+export const runConfigureFail2ban: HardeningTask = async (client, options, server) => {
   if (!options.installFail2ban) {
     return {
       name: "Fail2ban",
@@ -9,7 +9,7 @@ export const runConfigureFail2ban: HardeningTask = async (ssh, options, server) 
     }
   }
 
-  const installResult = await ssh.exec("DEBIAN_FRONTEND=noninteractive apt install -y fail2ban")
+  const installResult = await client.exec("DEBIAN_FRONTEND=noninteractive apt install -y fail2ban")
   if (installResult.exitCode !== 0) {
     return {
       name: "Fail2ban",
@@ -49,9 +49,9 @@ export const runConfigureFail2ban: HardeningTask = async (ssh, options, server) 
     ].join("\n")
   }
 
-  await ssh.writeFile("/etc/fail2ban/jail.d/securbuntu.local", jailConfig)
+  await client.writeFile("/etc/fail2ban/jail.d/securbuntu.local", jailConfig)
 
-  const restartResult = await ssh.exec("systemctl enable fail2ban && systemctl restart fail2ban")
+  const restartResult = await client.exec("systemctl enable fail2ban && systemctl restart fail2ban")
   if (restartResult.exitCode !== 0) {
     return {
       name: "Fail2ban",

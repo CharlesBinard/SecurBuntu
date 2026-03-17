@@ -49,6 +49,7 @@ export interface HardeningOptions {
   servicesToDisable: string[]
   fixFilePermissions: boolean
   currentSshPort: number
+  connectionUsername: string
 }
 
 export interface UfwPort {
@@ -85,6 +86,7 @@ export interface TaskResult {
 export interface Report {
   serverIp: string
   connectionUser: string
+  mode: "local" | "ssh"
   sudoUser?: string
   date: string
   ubuntuVersion: string
@@ -104,7 +106,7 @@ export interface ExecOptions {
   timeout?: number
 }
 
-export interface SshClient {
+export interface SystemClient {
   exec(command: string, options?: ExecOptions): Promise<CommandResult>
   execWithStdin(command: string, stdin: string, options?: ExecOptions): Promise<CommandResult>
   writeFile(remotePath: string, content: string): Promise<void>
@@ -114,4 +116,11 @@ export interface SshClient {
   readonly isRoot: boolean
 }
 
-export type HardeningTask = (ssh: SshClient, options: HardeningOptions, server: ServerInfo) => Promise<TaskResult>
+export type HardeningTask = (client: SystemClient, options: HardeningOptions, server: ServerInfo) => Promise<TaskResult>
+
+export interface ConnectionResult {
+  client: SystemClient
+  mode: "local" | "ssh"
+  host: string
+  username: string
+}

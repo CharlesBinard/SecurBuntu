@@ -1,6 +1,6 @@
 import type { HardeningTask } from "../types.ts"
 
-export const runConfigureUnattended: HardeningTask = async (ssh, options) => {
+export const runConfigureUnattended: HardeningTask = async (client, options) => {
   if (!options.enableAutoUpdates) {
     return {
       name: "Automatic Updates",
@@ -9,7 +9,7 @@ export const runConfigureUnattended: HardeningTask = async (ssh, options) => {
     }
   }
 
-  const installResult = await ssh.exec("DEBIAN_FRONTEND=noninteractive apt install -y unattended-upgrades")
+  const installResult = await client.exec("DEBIAN_FRONTEND=noninteractive apt install -y unattended-upgrades")
   if (installResult.exitCode !== 0) {
     return {
       name: "Automatic Updates",
@@ -19,7 +19,7 @@ export const runConfigureUnattended: HardeningTask = async (ssh, options) => {
     }
   }
 
-  const has50 = await ssh.fileExists("/etc/apt/apt.conf.d/50unattended-upgrades")
+  const has50 = await client.fileExists("/etc/apt/apt.conf.d/50unattended-upgrades")
   const warning = has50
     ? undefined
     : "Warning: /etc/apt/apt.conf.d/50unattended-upgrades not found. Security origins may not be configured."
@@ -30,7 +30,7 @@ export const runConfigureUnattended: HardeningTask = async (ssh, options) => {
     'APT::Periodic::AutocleanInterval "7";',
   ].join("\n")
 
-  await ssh.writeFile("/etc/apt/apt.conf.d/20auto-upgrades", autoUpgradesConfig)
+  await client.writeFile("/etc/apt/apt.conf.d/20auto-upgrades", autoUpgradesConfig)
 
   return {
     name: "Automatic Updates",
