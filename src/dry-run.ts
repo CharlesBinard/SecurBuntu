@@ -2,7 +2,7 @@ import * as p from "@clack/prompts"
 import pc from "picocolors"
 import type { CommandResult, ExecOptions, SystemClient } from "./types.ts"
 
-export class DryRunSshClient implements SystemClient {
+export class DryRunClient implements SystemClient {
   private commands: string[] = []
   readonly isRoot: boolean
 

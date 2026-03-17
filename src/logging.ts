@@ -1,7 +1,7 @@
 import { writeFileSync } from "fs"
 import type { CommandResult, ExecOptions, SystemClient } from "./types.ts"
 
-export class LoggingSshClient implements SystemClient {
+export class LoggingClient implements SystemClient {
   private entries: string[] = []
   readonly isRoot: boolean
 

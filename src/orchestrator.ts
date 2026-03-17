@@ -2,8 +2,8 @@ import { confirm, isCancel, log, outro, spinner } from "@clack/prompts"
 import pc from "picocolors"
 import { displayAudit, runAudit } from "./audit/index.ts"
 import { connectWithRetry } from "./connection/index.ts"
-import { DryRunSshClient } from "./dry-run.ts"
-import { LoggingSshClient } from "./logging.ts"
+import { DryRunClient } from "./dry-run.ts"
+import { LoggingClient } from "./logging.ts"
 import {
   promptConfirmation,
   promptExportAudit,
@@ -96,7 +96,7 @@ async function handleDryRunOrSimulate(
 ): Promise<"abort" | "proceed"> {
   if (!isDryRun && confirmation !== "simulate") return "proceed"
 
-  const dryRunClient = new DryRunSshClient(client)
+  const dryRunClient = new DryRunClient(client)
   await executeTasks(dryRunClient, options, serverInfo)
   dryRunClient.displaySummary()
 
@@ -116,7 +116,7 @@ async function handleDryRunOrSimulate(
   return "proceed"
 }
 
-async function exportLogIfNeeded(loggingClient: LoggingSshClient, host: string, wantLog: boolean): Promise<void> {
+async function exportLogIfNeeded(loggingClient: LoggingClient, host: string, wantLog: boolean): Promise<void> {
   if (!loggingClient.hasEntries()) return
 
   const shouldSaveLog = wantLog || (await promptExportLog())
@@ -141,7 +141,7 @@ async function executeAndReport(
   wantLog: boolean,
   s: ReturnType<typeof spinner>,
 ): Promise<void> {
-  const loggingClient = new LoggingSshClient(client)
+  const loggingClient = new LoggingClient(client)
   const results = await executeTasks(loggingClient, options, serverInfo)
 
   if (!isDryRun) {
