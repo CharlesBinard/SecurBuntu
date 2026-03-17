@@ -11,7 +11,7 @@ interface ResponseRule {
   response: MockExecResponse
 }
 
-export class MockSshClient implements SystemClient {
+export class MockSystemClient implements SystemClient {
   readonly isRoot: boolean
   readonly commands: string[] = []
   readonly stdinData: Map<string, string> = new Map()
@@ -51,7 +51,7 @@ export class MockSshClient implements SystemClient {
 
   async readFile(remotePath: string): Promise<string> {
     const content = this.fileContents.get(remotePath)
-    if (content === undefined) throw new Error(`MockSshClient: no content for ${remotePath}`)
+    if (content === undefined) throw new Error(`MockSystemClient: no content for ${remotePath}`)
     return content
   }
 

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { existsSync, readFileSync, unlinkSync } from "fs"
 import { LoggingClient } from "../logging.ts"
-import { MockSshClient } from "./helpers/mock-ssh.ts"
+import { MockSystemClient } from "./helpers/mock-ssh.ts"
 
 const TEST_LOG_PATH = "/tmp/securbuntu-test-log.txt"
 
@@ -15,7 +15,7 @@ afterEach(() => {
 
 describe("LoggingClient", () => {
   test("exec delegates to real client and logs", async () => {
-    const mock = new MockSshClient()
+    const mock = new MockSystemClient()
     mock.onExec("whoami", { stdout: "root" })
     const logging = new LoggingClient(mock)
 
@@ -27,7 +27,7 @@ describe("LoggingClient", () => {
   })
 
   test("exec logs stdout and stderr", async () => {
-    const mock = new MockSshClient()
+    const mock = new MockSystemClient()
     mock.onExec("fail", { stdout: "out", stderr: "err", exitCode: 1 })
     const logging = new LoggingClient(mock)
 
@@ -42,7 +42,7 @@ describe("LoggingClient", () => {
   })
 
   test("exec truncates stdout over 2000 chars", async () => {
-    const mock = new MockSshClient()
+    const mock = new MockSystemClient()
     const longOutput = "x".repeat(3000)
     mock.onExec("big", { stdout: longOutput })
     const logging = new LoggingClient(mock)
@@ -56,7 +56,7 @@ describe("LoggingClient", () => {
   })
 
   test("execWithStdin delegates and logs stdin size", async () => {
-    const mock = new MockSshClient()
+    const mock = new MockSystemClient()
     const logging = new LoggingClient(mock)
 
     await logging.execWithStdin("chpasswd", "user:pass\n")
@@ -68,7 +68,7 @@ describe("LoggingClient", () => {
   })
 
   test("writeFile delegates and logs", async () => {
-    const mock = new MockSshClient()
+    const mock = new MockSystemClient()
     const logging = new LoggingClient(mock)
 
     await logging.writeFile("/etc/test.conf", "hello")
@@ -81,7 +81,7 @@ describe("LoggingClient", () => {
   })
 
   test("readFile delegates and logs", async () => {
-    const mock = new MockSshClient()
+    const mock = new MockSystemClient()
     mock.setFile("/etc/hostname", "myhost")
     const logging = new LoggingClient(mock)
 
@@ -95,7 +95,7 @@ describe("LoggingClient", () => {
   })
 
   test("fileExists delegates and logs", async () => {
-    const mock = new MockSshClient()
+    const mock = new MockSystemClient()
     mock.setFile("/etc/test", "content")
     const logging = new LoggingClient(mock)
 
@@ -108,25 +108,25 @@ describe("LoggingClient", () => {
   })
 
   test("hasEntries returns false when empty", () => {
-    const mock = new MockSshClient()
+    const mock = new MockSystemClient()
     const logging = new LoggingClient(mock)
     expect(logging.hasEntries()).toBe(false)
   })
 
   test("flush does nothing when no entries", () => {
-    const mock = new MockSshClient()
+    const mock = new MockSystemClient()
     const logging = new LoggingClient(mock)
     logging.flush(TEST_LOG_PATH)
     expect(existsSync(TEST_LOG_PATH)).toBe(false)
   })
 
   test("isRoot delegates from real client", () => {
-    expect(new LoggingClient(new MockSshClient(true)).isRoot).toBe(true)
-    expect(new LoggingClient(new MockSshClient(false)).isRoot).toBe(false)
+    expect(new LoggingClient(new MockSystemClient(true)).isRoot).toBe(true)
+    expect(new LoggingClient(new MockSystemClient(false)).isRoot).toBe(false)
   })
 
   test("entries have ISO timestamps", async () => {
-    const mock = new MockSshClient()
+    const mock = new MockSystemClient()
     const logging = new LoggingClient(mock)
 
     await logging.exec("test")

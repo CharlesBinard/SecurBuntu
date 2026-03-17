@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { runConfigureUnattended } from "../../tasks/unattended.ts"
 import type { HardeningOptions, ServerInfo } from "../../types.ts"
-import { MockSshClient } from "../helpers/mock-ssh.ts"
+import { MockSystemClient } from "../helpers/mock-ssh.ts"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,
@@ -34,14 +34,14 @@ const defaultServer: ServerInfo = {
 
 describe("runConfigureUnattended", () => {
   test("skips when not requested", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runConfigureUnattended(ssh, defaultOptions, defaultServer)
     expect(result.success).toBe(true)
     expect(result.message).toStartWith("Skipped")
   })
 
   test("installs and configures auto-upgrades", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.setFile("/etc/apt/apt.conf.d/50unattended-upgrades", "exists")
 
     const options = { ...defaultOptions, enableAutoUpdates: true }
@@ -56,7 +56,7 @@ describe("runConfigureUnattended", () => {
   })
 
   test("warns when 50unattended-upgrades missing", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     // Don't set the file — fileExists will return false
 
     const options = { ...defaultOptions, enableAutoUpdates: true }
@@ -67,7 +67,7 @@ describe("runConfigureUnattended", () => {
   })
 
   test("fails when install fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("apt install -y unattended-upgrades", { exitCode: 1, stderr: "error" })
 
     const options = { ...defaultOptions, enableAutoUpdates: true }

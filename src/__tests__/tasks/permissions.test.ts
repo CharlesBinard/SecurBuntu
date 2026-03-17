@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { checkPermissions, runFixPermissions } from "../../tasks/permissions.ts"
 import type { HardeningOptions, ServerInfo } from "../../types.ts"
-import { MockSshClient } from "../helpers/mock-ssh.ts"
+import { MockSystemClient } from "../helpers/mock-ssh.ts"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,
@@ -34,14 +34,14 @@ const defaultServer: ServerInfo = {
 
 describe("runFixPermissions", () => {
   test("skips when not requested", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runFixPermissions(ssh, defaultOptions, defaultServer)
     expect(result.success).toBe(true)
     expect(result.message).toStartWith("Skipped — not requested")
   })
 
   test("skips when all permissions are already correct", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("ls /etc/ssh/ssh_host_*_key", { stdout: "", exitCode: 1 })
     ssh.onExec("stat -c '%a %U %G' '/etc/passwd'", { stdout: "644 root root" })
     ssh.onExec("stat -c '%a %U %G' '/etc/shadow'", { stdout: "640 root shadow" })
@@ -58,7 +58,7 @@ describe("runFixPermissions", () => {
   })
 
   test("fixes non-conforming permissions", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("ls /etc/ssh/ssh_host_*_key", { exitCode: 1 })
     ssh.onExec("stat -c '%a %U %G' '/etc/passwd'", { stdout: "644 root root" })
     ssh.onExec("stat -c '%a %U %G' '/etc/shadow'", { stdout: "644 root root" }) // wrong
@@ -78,7 +78,7 @@ describe("runFixPermissions", () => {
   })
 
   test("handles missing files gracefully", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("ls /etc/ssh/ssh_host_*_key", { exitCode: 1 })
     ssh.onExec("stat -c '%a %U %G' '/etc/passwd'", { stdout: "644 root root" })
     ssh.onExec("stat -c '%a %U %G' '/etc/shadow'", { stdout: "640 root shadow" })
@@ -95,7 +95,7 @@ describe("runFixPermissions", () => {
   })
 
   test("includes SSH host keys in check", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("ls /etc/ssh/ssh_host_*_key", {
       stdout: "/etc/ssh/ssh_host_ed25519_key\n/etc/ssh/ssh_host_rsa_key",
     })
@@ -117,7 +117,7 @@ describe("runFixPermissions", () => {
   })
 
   test("reports failure when chmod fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("ls /etc/ssh/ssh_host_*_key", { exitCode: 1 })
     ssh.onExec("stat -c '%a %U %G' '/etc/passwd'", { stdout: "644 root root" })
     ssh.onExec("stat -c '%a %U %G' '/etc/shadow'", { stdout: "644 root root" }) // wrong
@@ -137,7 +137,7 @@ describe("runFixPermissions", () => {
 
 describe("checkPermissions", () => {
   test("returns empty array when all correct", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("ls /etc/ssh/ssh_host_*_key", { exitCode: 1 })
     ssh.onExec("stat -c '%a %U %G' '/etc/passwd'", { stdout: "644 root root" })
     ssh.onExec("stat -c '%a %U %G' '/etc/shadow'", { stdout: "640 root shadow" })
@@ -151,7 +151,7 @@ describe("checkPermissions", () => {
   })
 
   test("detects wrong permissions", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("ls /etc/ssh/ssh_host_*_key", { exitCode: 1 })
     ssh.onExec("stat -c '%a %U %G' '/etc/passwd'", { stdout: "644 root root" })
     ssh.onExec("stat -c '%a %U %G' '/etc/shadow'", { stdout: "644 root root" }) // wrong mode + group

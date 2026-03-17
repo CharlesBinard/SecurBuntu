@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { runConfigureSysctl } from "../../tasks/sysctl.ts"
 import type { HardeningOptions, ServerInfo, SysctlOptions } from "../../types.ts"
-import { MockSshClient } from "../helpers/mock-ssh.ts"
+import { MockSystemClient } from "../helpers/mock-ssh.ts"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,
@@ -42,14 +42,14 @@ const allSysctl: SysctlOptions = {
 
 describe("runConfigureSysctl", () => {
   test("skips when not requested", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runConfigureSysctl(ssh, defaultOptions, defaultServer)
     expect(result.success).toBe(true)
     expect(result.message).toStartWith("Skipped")
   })
 
   test("skips when all options are false", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = {
       ...defaultOptions,
       enableSysctl: true,
@@ -68,7 +68,7 @@ describe("runConfigureSysctl", () => {
   })
 
   test("writes correct config with all options enabled", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = {
       ...defaultOptions,
       enableSysctl: true,
@@ -92,7 +92,7 @@ describe("runConfigureSysctl", () => {
   })
 
   test("writes only selected parameters", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = {
       ...defaultOptions,
       enableSysctl: true,
@@ -115,7 +115,7 @@ describe("runConfigureSysctl", () => {
   })
 
   test("applies with sysctl --system", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = {
       ...defaultOptions,
       enableSysctl: true,
@@ -127,7 +127,7 @@ describe("runConfigureSysctl", () => {
   })
 
   test("fails when sysctl --system fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sysctl --system", { exitCode: 1, stderr: "sysctl error" })
 
     const options = {
@@ -142,7 +142,7 @@ describe("runConfigureSysctl", () => {
   })
 
   test("config file has date header", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = {
       ...defaultOptions,
       enableSysctl: true,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { runCreateUser } from "../../tasks/user.ts"
 import type { HardeningOptions, ServerInfo } from "../../types.ts"
-import { MockSshClient } from "../helpers/mock-ssh.ts"
+import { MockSystemClient } from "../helpers/mock-ssh.ts"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,
@@ -34,14 +34,14 @@ const defaultServer: ServerInfo = {
 
 describe("runCreateUser", () => {
   test("skips when not requested", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runCreateUser(ssh, defaultOptions, defaultServer)
     expect(result.success).toBe(true)
     expect(result.message).toStartWith("Skipped")
   })
 
   test("creates new user when not existing", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("id deploy", { stdout: "missing" })
 
     const options = {
@@ -62,7 +62,7 @@ describe("runCreateUser", () => {
   })
 
   test("updates existing user", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("id deploy", { stdout: "exists" })
 
     const options = {
@@ -80,7 +80,7 @@ describe("runCreateUser", () => {
   })
 
   test("fails when adduser fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("id deploy", { stdout: "missing" })
     ssh.onExec("adduser", { exitCode: 1, stderr: "adduser error" })
 
@@ -98,7 +98,7 @@ describe("runCreateUser", () => {
   })
 
   test("fails when chpasswd fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("id deploy", { stdout: "missing" })
     ssh.onExec("chpasswd", { exitCode: 1, stderr: "chpasswd error" })
 
@@ -116,7 +116,7 @@ describe("runCreateUser", () => {
   })
 
   test("sends correct stdin to chpasswd", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("id deploy", { stdout: "missing" })
 
     const options = {
@@ -133,7 +133,7 @@ describe("runCreateUser", () => {
   })
 
   test("fails when usermod fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("id deploy", { stdout: "missing" })
     ssh.onExec("usermod", { exitCode: 1, stderr: "usermod error" })
 
@@ -151,7 +151,7 @@ describe("runCreateUser", () => {
   })
 
   test("fails when SSH directory setup fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("id deploy", { stdout: "missing" })
     ssh.onExec("mkdir -p /home/deploy/.ssh", { exitCode: 1, stderr: "permission denied" })
 

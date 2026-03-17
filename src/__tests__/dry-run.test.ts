@@ -1,5 +1,5 @@
 import { afterEach, mock as bunMock, describe, expect, test } from "bun:test"
-import { MockSshClient } from "./helpers/mock-ssh.ts"
+import { MockSystemClient } from "./helpers/mock-ssh.ts"
 
 let logInfoCalls: string[] = []
 let noteCalls: { message: string; title: string }[] = []
@@ -24,7 +24,7 @@ import { DryRunClient } from "../dry-run.ts"
 
 describe("DryRunClient", () => {
   test("exec records command and returns empty success", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const dryRun = new DryRunClient(ssh)
 
     const result = await dryRun.exec("apt update")
@@ -37,7 +37,7 @@ describe("DryRunClient", () => {
   })
 
   test("execWithStdin records command with stdin size", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const dryRun = new DryRunClient(ssh)
 
     await dryRun.execWithStdin("chpasswd", "user:pass\n")
@@ -47,7 +47,7 @@ describe("DryRunClient", () => {
   })
 
   test("writeFile records write operation", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const dryRun = new DryRunClient(ssh)
 
     await dryRun.writeFile("/etc/test.conf", "content here")
@@ -57,7 +57,7 @@ describe("DryRunClient", () => {
   })
 
   test("readFile passes through to real client", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.setFile("/etc/hostname", "myserver")
     const dryRun = new DryRunClient(ssh)
 
@@ -67,7 +67,7 @@ describe("DryRunClient", () => {
   })
 
   test("fileExists passes through to real client", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.setFile("/etc/test", "exists")
     const dryRun = new DryRunClient(ssh)
 
@@ -76,15 +76,15 @@ describe("DryRunClient", () => {
   })
 
   test("isRoot delegates from real client", () => {
-    const rootMock = new MockSshClient(true)
-    const nonRootMock = new MockSshClient(false)
+    const rootMock = new MockSystemClient(true)
+    const nonRootMock = new MockSystemClient(false)
 
     expect(new DryRunClient(rootMock).isRoot).toBe(true)
     expect(new DryRunClient(nonRootMock).isRoot).toBe(false)
   })
 
   test("getCommandLog returns a copy", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const dryRun = new DryRunClient(ssh)
 
     await dryRun.exec("cmd1")
@@ -96,7 +96,7 @@ describe("DryRunClient", () => {
   })
 
   test("close is a no-op", () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const dryRun = new DryRunClient(ssh)
     dryRun.close() // should not throw
   })
@@ -109,7 +109,7 @@ describe("DryRunClient.displaySummary", () => {
   })
 
   test("logs message when no commands were recorded", () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const dryRun = new DryRunClient(ssh)
 
     dryRun.displaySummary()
@@ -121,7 +121,7 @@ describe("DryRunClient.displaySummary", () => {
   })
 
   test("displays numbered command list via note when commands exist", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const dryRun = new DryRunClient(ssh)
 
     await dryRun.exec("apt update")

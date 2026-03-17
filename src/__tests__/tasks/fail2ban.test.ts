@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { runConfigureFail2ban } from "../../tasks/fail2ban.ts"
 import type { HardeningOptions, ServerInfo } from "../../types.ts"
-import { MockSshClient } from "../helpers/mock-ssh.ts"
+import { MockSystemClient } from "../helpers/mock-ssh.ts"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,
@@ -34,14 +34,14 @@ const makeServer = (version: string): ServerInfo => ({
 
 describe("runConfigureFail2ban", () => {
   test("skips when not requested", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runConfigureFail2ban(ssh, defaultOptions, makeServer("24.04"))
     expect(result.success).toBe(true)
     expect(result.message).toStartWith("Skipped")
   })
 
   test("installs fail2ban", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = { ...defaultOptions, installFail2ban: true }
 
     const result = await runConfigureFail2ban(ssh, options, makeServer("24.04"))
@@ -51,7 +51,7 @@ describe("runConfigureFail2ban", () => {
   })
 
   test("uses systemd backend + nftables for Ubuntu 24.04", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = { ...defaultOptions, installFail2ban: true }
 
     await runConfigureFail2ban(ssh, options, makeServer("24.04"))
@@ -63,7 +63,7 @@ describe("runConfigureFail2ban", () => {
   })
 
   test("uses auto backend + iptables for Ubuntu 22.04", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = { ...defaultOptions, installFail2ban: true }
 
     await runConfigureFail2ban(ssh, options, makeServer("22.04"))
@@ -75,7 +75,7 @@ describe("runConfigureFail2ban", () => {
   })
 
   test("uses custom SSH port", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = {
       ...defaultOptions,
       installFail2ban: true,
@@ -90,7 +90,7 @@ describe("runConfigureFail2ban", () => {
   })
 
   test("uses currentSshPort when port is not changed", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const options = {
       ...defaultOptions,
       installFail2ban: true,
@@ -104,7 +104,7 @@ describe("runConfigureFail2ban", () => {
   })
 
   test("fails when install fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("apt install -y fail2ban", { exitCode: 1, stderr: "error" })
     const options = { ...defaultOptions, installFail2ban: true }
 
@@ -115,7 +115,7 @@ describe("runConfigureFail2ban", () => {
   })
 
   test("fails when restart fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("systemctl enable fail2ban", { exitCode: 1, stderr: "restart error" })
     const options = { ...defaultOptions, installFail2ban: true }
 
