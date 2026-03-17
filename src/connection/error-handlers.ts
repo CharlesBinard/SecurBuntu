@@ -3,11 +3,19 @@ import { isCancel, log, password as passwordPrompt } from "@clack/prompts"
 import { existsSync } from "fs"
 import pc from "picocolors"
 import { promptCopyKeyOnFailure } from "../prompts/index.ts"
-import { checkSshCopyIdInstalled, connect, copyKeyToServer } from "../ssh/index.ts"
-import type { ConnectionConfig, SystemClient } from "../types.ts"
+import { connect, copyKeyToServer } from "../ssh/index.ts"
+import type { ConnectionConfig, HostCapabilities, HostPlatform, SystemClient } from "../types.ts"
 
-export async function handleCopyAuthMethod(config: ConnectionConfig): Promise<"continue" | "retry"> {
+export async function handleCopyAuthMethod(
+  config: ConnectionConfig,
+  capabilities: HostCapabilities,
+): Promise<"continue" | "retry"> {
   if (config.authMethod !== "copy" || !config.privateKeyPath) {
+    return "continue"
+  }
+
+  if (!capabilities.sshCopyId) {
+    log.info(pc.dim("ssh-copy-id not available. Key will be copied after connection."))
     return "continue"
   }
 
@@ -40,6 +48,7 @@ export async function handleCopyAuthMethod(config: ConnectionConfig): Promise<"c
 export async function handleSudoPasswordPrompt(
   config: ConnectionConfig,
   s: ReturnType<typeof spinner>,
+  platform: HostPlatform,
 ): Promise<SystemClient | "retry"> {
   s.stop(pc.yellow("Sudo password required"))
   log.warning(
@@ -63,7 +72,7 @@ export async function handleSudoPasswordPrompt(
 
   s.start(`Reconnecting to ${config.host}...`)
   try {
-    const ssh = await connect(config)
+    const ssh = await connect(config, platform)
     s.stop(`Connected to ${pc.green(config.host)}`)
     return ssh
   } catch (retryError) {
@@ -74,7 +83,7 @@ export async function handleSudoPasswordPrompt(
   }
 }
 
-export async function handlePermissionDenied(config: ConnectionConfig): Promise<void> {
+export async function handlePermissionDenied(config: ConnectionConfig, capabilities: HostCapabilities): Promise<void> {
   const wantCopy = await promptCopyKeyOnFailure()
   if (!wantCopy) return
 
@@ -85,8 +94,7 @@ export async function handlePermissionDenied(config: ConnectionConfig): Promise<
     return
   }
 
-  const hasSshCopyId = await checkSshCopyIdInstalled()
-  if (!hasSshCopyId) {
+  if (!capabilities.sshCopyId) {
     log.error(
       `${pc.red("ssh-copy-id is required but is not installed.")}\n` +
         `  ${pc.dim("Install it with:")}\n` +
@@ -117,17 +125,19 @@ export async function handleConnectionError(
   error: unknown,
   config: ConnectionConfig,
   s: ReturnType<typeof spinner>,
+  platform: HostPlatform,
+  capabilities: HostCapabilities,
 ): Promise<SystemClient | "retry"> {
   const msg = error instanceof Error ? error.message : "Unknown error"
 
   if (msg === "SUDO_PASSWORD_REQUIRED") {
-    return handleSudoPasswordPrompt(config, s)
+    return handleSudoPasswordPrompt(config, s, platform)
   }
 
   s.stop(pc.red(`Connection failed: ${msg}`))
 
   if (config.authMethod === "key" && config.privateKeyPath && msg.includes("Permission denied")) {
-    await handlePermissionDenied(config)
+    await handlePermissionDenied(config, capabilities)
   } else {
     log.warning(
       `${pc.bold("Troubleshooting:")}\n` +

@@ -2,14 +2,22 @@ import type { spinner } from "@clack/prompts"
 import { confirm, isCancel, log } from "@clack/prompts"
 import pc from "picocolors"
 import { addToKnownHosts, fetchHostKeyFingerprint } from "../ssh/index.ts"
-import type { ConnectionConfig } from "../types.ts"
+import type { ConnectionConfig, HostCapabilities, HostPlatform } from "../types.ts"
 
 export async function verifyHostKey(
   config: ConnectionConfig,
   s: ReturnType<typeof spinner>,
+  platform: HostPlatform,
+  capabilities: HostCapabilities,
 ): Promise<"continue" | "retry"> {
+  if (!capabilities.sshKeyscan) {
+    log.warning(pc.yellow("ssh-keyscan not available — skipping host key verification."))
+    return "continue"
+  }
+
   s.start(`Checking host key for ${config.host}...`)
-  const hostKeyResult = await fetchHostKeyFingerprint(config.host, config.port)
+
+  const hostKeyResult = await fetchHostKeyFingerprint(config.host, config.port, platform, capabilities)
 
   if (hostKeyResult.known) {
     s.stop(`Host key verified for ${pc.green(config.host)}`)

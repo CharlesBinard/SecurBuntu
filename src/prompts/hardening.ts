@@ -1,6 +1,7 @@
 import * as p from "@clack/prompts"
 import { existsSync, readFileSync } from "fs"
 import pc from "picocolors"
+import { resolveHome } from "../platform/home.ts"
 import { detectDefaultPubKeyPath } from "../ssh/index.ts"
 import type { HardeningOptions, ServerAuditContext, ServerInfo, SystemClient } from "../types.ts"
 import { unwrapBoolean, unwrapText } from "./helpers.ts"
@@ -67,7 +68,7 @@ async function promptPersonalKey(options: HardeningOptions, mode: "local" | "ssh
       defaultValue: defaultPubKey,
       validate(value) {
         if (!value?.trim()) return "Path is required"
-        const resolved = value.replace("~", process.env.HOME ?? "")
+        const resolved = value.replace("~", resolveHome())
         if (!existsSync(resolved)) return `File not found: ${resolved}`
         const content = readFileSync(resolved, "utf-8").trim()
         if (!content.startsWith("ssh-")) return "Invalid public key format (must start with ssh-)"
@@ -75,7 +76,7 @@ async function promptPersonalKey(options: HardeningOptions, mode: "local" | "ssh
       },
     }),
   )
-  options.personalKeyPath = pubKeyPath.replace("~", process.env.HOME ?? "")
+  options.personalKeyPath = pubKeyPath.replace("~", resolveHome())
   return true
 }
 

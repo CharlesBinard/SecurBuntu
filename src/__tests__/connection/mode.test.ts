@@ -1,159 +1,101 @@
 import { describe, expect, test } from "bun:test"
-import { spawnProcess } from "../../ssh/process.ts"
+import { detectHostPlatform, isVersionAtLeast, parseOsRelease } from "../../platform/detect.ts"
 
-// We can't directly mock spawnProcess without affecting other tests,
-// so we test validateLocalUbuntu's parsing logic by simulating
-// what spawnProcess returns for different OS environments.
-// We replicate the core parsing logic to ensure it works correctly.
-
-function parseOsValidation(stdout: string, exitCode: number): { version?: string; codename?: string; error?: string } {
-  if (exitCode !== 0) {
-    return { error: "Failed to detect OS" }
-  }
-  const parts = stdout.split("|")
-  if (parts.length < 3 || parts[0] !== "ubuntu") {
-    return { error: `Unsupported OS: ${parts[0] ?? "unknown"}. SecurBuntu only supports Ubuntu.` }
-  }
-  const versionId = parts[1] ?? ""
-  const versionParts = versionId.split(".")
-  const major = parseInt(versionParts[0] ?? "0", 10)
-  const minor = parseInt(versionParts[1] ?? "0", 10)
-  if (major < 22 || (major === 22 && minor < 4)) {
-    return { error: `Ubuntu ${versionId} is not supported. Minimum required: 22.04` }
-  }
-  return { version: versionId, codename: parts[2] ?? "" }
-}
-
-describe("validateLocalUbuntu (live)", () => {
-  test("returns a result object with either version or error", async () => {
-    const { validateLocalUbuntu } = await import("../../connection/mode.ts")
-    const result = await validateLocalUbuntu()
-    const hasVersion = result.version !== undefined
-    const hasError = result.error !== undefined
-    expect(hasVersion || hasError).toBe(true)
+describe("detectHostPlatform (live)", () => {
+  test("returns a valid HostPlatform object", async () => {
+    const platform = await detectHostPlatform()
+    expect(typeof platform.os).toBe("string")
+    expect(["linux", "macos", "windows"]).toContain(platform.os)
+    expect(typeof platform.isCompatibleTarget).toBe("boolean")
   })
 
-  test("returns version and codename on a real Ubuntu system", async () => {
-    const { validateLocalUbuntu } = await import("../../connection/mode.ts")
-    const result = await validateLocalUbuntu()
-    if (result.error) {
-      expect(typeof result.error).toBe("string")
-      expect(result.error.length).toBeGreaterThan(0)
-      return
-    }
-    expect(result.version).toBeDefined()
-    expect(typeof result.version).toBe("string")
-    expect(result.codename).toBeDefined()
-    expect(typeof result.codename).toBe("string")
+  test("distro and version are strings or null", async () => {
+    const platform = await detectHostPlatform()
+    expect(platform.distro === null || typeof platform.distro === "string").toBe(true)
+    expect(platform.version === null || typeof platform.version === "string").toBe(true)
+    expect(platform.codename === null || typeof platform.codename === "string").toBe(true)
   })
 
-  test("version string contains a dot when present", async () => {
-    const { validateLocalUbuntu } = await import("../../connection/mode.ts")
-    const result = await validateLocalUbuntu()
-    if (result.version) {
-      expect(result.version).toContain(".")
+  test("isCompatibleTarget is false on non-linux platforms or non-Ubuntu", async () => {
+    const platform = await detectHostPlatform()
+    if (platform.os !== "linux" || platform.distro !== "ubuntu") {
+      expect(platform.isCompatibleTarget).toBe(false)
     }
   })
 })
 
-describe("validateLocalUbuntu parsing logic", () => {
-  test("parses valid Ubuntu 24.04", () => {
-    const result = parseOsValidation("ubuntu|24.04|noble", 0)
+describe("parseOsRelease", () => {
+  test("parses valid pipe-separated os-release output", () => {
+    const result = parseOsRelease("ubuntu|24.04|noble")
+    expect(result.distro).toBe("ubuntu")
     expect(result.version).toBe("24.04")
     expect(result.codename).toBe("noble")
-    expect(result.error).toBeUndefined()
   })
 
-  test("parses valid Ubuntu 22.04 (minimum)", () => {
-    const result = parseOsValidation("ubuntu|22.04|jammy", 0)
-    expect(result.version).toBe("22.04")
-    expect(result.codename).toBe("jammy")
-    expect(result.error).toBeUndefined()
+  test("returns empty strings for missing parts", () => {
+    const result = parseOsRelease("")
+    expect(result.distro).toBe("")
+    expect(result.version).toBe("")
+    expect(result.codename).toBe("")
   })
 
-  test("returns error for failed command", () => {
-    const result = parseOsValidation("", 1)
-    expect(result.error).toBe("Failed to detect OS")
+  test("handles single-part input", () => {
+    const result = parseOsRelease("fedora")
+    expect(result.distro).toBe("fedora")
+    expect(result.version).toBe("")
+    expect(result.codename).toBe("")
   })
 
-  test("returns error for non-Ubuntu OS", () => {
-    const result = parseOsValidation("debian|12|bookworm", 0)
-    expect(result.error).toContain("Unsupported OS: debian")
-  })
-
-  test("returns error for old Ubuntu 20.04", () => {
-    const result = parseOsValidation("ubuntu|20.04|focal", 0)
-    expect(result.error).toContain("Ubuntu 20.04 is not supported")
-  })
-
-  test("returns error for Ubuntu 18.04", () => {
-    const result = parseOsValidation("ubuntu|18.04|bionic", 0)
-    expect(result.error).toContain("not supported")
-  })
-
-  test("returns error for Ubuntu 22.03 (just below minimum)", () => {
-    const result = parseOsValidation("ubuntu|22.03|pre-jammy", 0)
-    expect(result.error).toContain("not supported")
-  })
-
-  test("accepts Ubuntu 23.10", () => {
-    const result = parseOsValidation("ubuntu|23.10|mantic", 0)
-    expect(result.version).toBe("23.10")
-    expect(result.error).toBeUndefined()
-  })
-
-  test("accepts Ubuntu 26.04 (future version)", () => {
-    const result = parseOsValidation("ubuntu|26.04|future", 0)
-    expect(result.version).toBe("26.04")
-    expect(result.codename).toBe("future")
-    expect(result.error).toBeUndefined()
-  })
-
-  test("returns error for unknown OS with single-part output", () => {
-    const result = parseOsValidation("fedora", 0)
-    expect(result.error).toContain("Unsupported OS")
-  })
-
-  test("returns error for empty string with exit 0", () => {
-    const result = parseOsValidation("", 0)
-    expect(result.error).toBeDefined()
-  })
-
-  test("returns error for Arch Linux", () => {
-    const result = parseOsValidation("arch||rolling", 0)
-    expect(result.error).toContain("Unsupported OS: arch")
-  })
-
-  test("returns error for CentOS", () => {
-    const result = parseOsValidation("centos|9|stream", 0)
-    expect(result.error).toContain("Unsupported OS: centos")
-  })
-
-  test("error includes minimum version for old Ubuntu", () => {
-    const result = parseOsValidation("ubuntu|16.04|xenial", 0)
-    expect(result.error).toContain("Minimum required: 22.04")
-  })
-
-  test("accepts Ubuntu 22.10", () => {
-    const result = parseOsValidation("ubuntu|22.10|kinetic", 0)
-    expect(result.version).toBe("22.10")
-    expect(result.error).toBeUndefined()
-  })
-
-  test("handles Ubuntu version with only major number", () => {
-    const result = parseOsValidation("ubuntu|24|noble", 0)
-    expect(result.version).toBe("24")
-    expect(result.error).toBeUndefined()
+  test("parses debian entry", () => {
+    const result = parseOsRelease("debian|12|bookworm")
+    expect(result.distro).toBe("debian")
+    expect(result.version).toBe("12")
+    expect(result.codename).toBe("bookworm")
   })
 })
 
-describe("spawnProcess integration via validateLocalUbuntu", () => {
-  test("spawnProcess runs bash and parses os-release", async () => {
-    const result = await spawnProcess(["bash", "-c", '. /etc/os-release && echo "$ID|$VERSION_ID|$VERSION_CODENAME"'])
-    expect(result).toHaveProperty("stdout")
-    expect(result).toHaveProperty("exitCode")
-    if (result.exitCode === 0) {
-      expect(result.stdout).toContain("|")
-    }
+describe("isVersionAtLeast", () => {
+  test("Ubuntu 24.04 is at least 22.04", () => {
+    expect(isVersionAtLeast("24.04", 22, 4)).toBe(true)
+  })
+
+  test("Ubuntu 22.04 meets the 22.04 minimum exactly", () => {
+    expect(isVersionAtLeast("22.04", 22, 4)).toBe(true)
+  })
+
+  test("Ubuntu 20.04 does not meet 22.04 minimum", () => {
+    expect(isVersionAtLeast("20.04", 22, 4)).toBe(false)
+  })
+
+  test("Ubuntu 22.03 does not meet 22.04 minimum", () => {
+    expect(isVersionAtLeast("22.03", 22, 4)).toBe(false)
+  })
+
+  test("Ubuntu 22.10 meets 22.04 minimum", () => {
+    expect(isVersionAtLeast("22.10", 22, 4)).toBe(true)
+  })
+
+  test("Ubuntu 23.10 meets 22.04 minimum", () => {
+    expect(isVersionAtLeast("23.10", 22, 4)).toBe(true)
+  })
+
+  test("Ubuntu 26.04 meets 22.04 minimum", () => {
+    expect(isVersionAtLeast("26.04", 22, 4)).toBe(true)
+  })
+
+  test("Ubuntu 18.04 does not meet 22.04 minimum", () => {
+    expect(isVersionAtLeast("18.04", 22, 4)).toBe(false)
+  })
+
+  test("Ubuntu 16.04 does not meet 22.04 minimum", () => {
+    expect(isVersionAtLeast("16.04", 22, 4)).toBe(false)
+  })
+
+  test("version with only major number (>= 24) meets 22.04", () => {
+    expect(isVersionAtLeast("24", 22, 4)).toBe(true)
+  })
+
+  test("returns false for non-numeric version", () => {
+    expect(isVersionAtLeast("rolling", 22, 4)).toBe(false)
   })
 })
