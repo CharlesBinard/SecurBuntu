@@ -1,6 +1,7 @@
 import * as p from "@clack/prompts"
 import { existsSync } from "fs"
 import pc from "picocolors"
+import { resolveHome } from "../platform/home.ts"
 import {
   checkSshCopyIdInstalled,
   checkSshpassInstalled,
@@ -19,13 +20,13 @@ async function promptManualKeyPath(): Promise<string> {
       defaultValue: defaultKey,
       validate(value) {
         if (!value?.trim()) return "Key path is required"
-        const resolved = value.replace("~", process.env.HOME ?? "")
+        const resolved = value.replace("~", resolveHome())
         if (!existsSync(resolved)) return `File not found: ${resolved}`
         return undefined
       },
     }),
   )
-  return keyPath.replace("~", process.env.HOME ?? "")
+  return keyPath.replace("~", resolveHome())
 }
 
 async function promptAuthCredentials(
