@@ -155,7 +155,11 @@ export async function promptHardeningOptions(
   options.configureCoolify = coolify
 
   if (coolify) {
-    p.log.info(pc.dim("Coolify host mode: root login set to 'prohibit-password' (key-only), IP forwarding kept enabled for Docker."))
+    p.log.info(
+      pc.dim(
+        "Coolify host mode: root login set to 'prohibit-password' (key-only), IP forwarding kept enabled for Docker.",
+      ),
+    )
     if (!addedKey) {
       p.log.warning(pc.yellow("You should add an SSH key for root access. Coolify will need it."))
     }
