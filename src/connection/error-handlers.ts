@@ -4,7 +4,7 @@ import { existsSync } from "fs"
 import pc from "picocolors"
 import { promptCopyKeyOnFailure } from "../prompts/index.ts"
 import { checkSshCopyIdInstalled, connect, copyKeyToServer } from "../ssh/index.ts"
-import type { ConnectionConfig, SshClient } from "../types.ts"
+import type { ConnectionConfig, SystemClient } from "../types.ts"
 
 export async function handleCopyAuthMethod(config: ConnectionConfig): Promise<"continue" | "retry"> {
   if (config.authMethod !== "copy" || !config.privateKeyPath) {
@@ -40,7 +40,7 @@ export async function handleCopyAuthMethod(config: ConnectionConfig): Promise<"c
 export async function handleSudoPasswordPrompt(
   config: ConnectionConfig,
   s: ReturnType<typeof spinner>,
-): Promise<SshClient | "retry"> {
+): Promise<SystemClient | "retry"> {
   s.stop(pc.yellow("Sudo password required"))
   log.warning(
     `${pc.bold("User does not have passwordless sudo.")}\n` +
@@ -117,7 +117,7 @@ export async function handleConnectionError(
   error: unknown,
   config: ConnectionConfig,
   s: ReturnType<typeof spinner>,
-): Promise<SshClient | "retry"> {
+): Promise<SystemClient | "retry"> {
   const msg = error instanceof Error ? error.message : "Unknown error"
 
   if (msg === "SUDO_PASSWORD_REQUIRED") {

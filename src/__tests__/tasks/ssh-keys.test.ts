@@ -1,6 +1,6 @@
 import { mock as bunMock, describe, expect, test } from "bun:test"
 import type { HardeningOptions, ServerInfo } from "../../types.ts"
-import { MockSshClient } from "../helpers/mock-ssh.ts"
+import { MockSystemClient } from "../helpers/mock-ssh.ts"
 
 // Mock fs.readFileSync for the public key
 bunMock.module("fs", () => ({
@@ -41,6 +41,7 @@ const defaultOptions: HardeningOptions = {
   servicesToDisable: [],
   fixFilePermissions: false,
   currentSshPort: 22,
+  connectionUsername: "root",
 }
 
 const defaultServer: ServerInfo = {
@@ -53,15 +54,14 @@ const defaultServer: ServerInfo = {
 
 describe("runInjectSshKeys", () => {
   test("skips when no key to add", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runInjectSshKeys(ssh, defaultOptions, defaultServer)
     expect(result.success).toBe(true)
     expect(result.message).toStartWith("Skipped")
   })
 
   test("injects key for target user", async () => {
-    const ssh = new MockSshClient()
-    ssh.onExec("whoami", { stdout: "root" })
+    const ssh = new MockSystemClient()
     ssh.onExec("grep -qxF", { stdout: "missing" })
 
     const options = {
@@ -79,8 +79,7 @@ describe("runInjectSshKeys", () => {
   })
 
   test("skips injection when key already present", async () => {
-    const ssh = new MockSshClient()
-    ssh.onExec("whoami", { stdout: "root" })
+    const ssh = new MockSystemClient()
     ssh.onExec("grep -qxF", { stdout: "found" })
 
     const options = {
@@ -96,8 +95,7 @@ describe("runInjectSshKeys", () => {
   })
 
   test("injects for root when coolify enabled and target is not root", async () => {
-    const ssh = new MockSshClient()
-    ssh.onExec("whoami", { stdout: "deploy" })
+    const ssh = new MockSystemClient()
     ssh.onExec("grep -qxF", { stdout: "missing" })
 
     const options = {
@@ -117,8 +115,7 @@ describe("runInjectSshKeys", () => {
   })
 
   test("returns failure when mkdir fails for target user (lines 24-29, 58)", async () => {
-    const ssh = new MockSshClient()
-    ssh.onExec("whoami", { stdout: "deploy" })
+    const ssh = new MockSystemClient()
     ssh.onExec("mkdir -p", { exitCode: 1, stderr: "permission denied" })
 
     const options = {
@@ -138,8 +135,7 @@ describe("runInjectSshKeys", () => {
   })
 
   test("returns failure when tee append fails for target user (lines 24-29, 73)", async () => {
-    const ssh = new MockSshClient()
-    ssh.onExec("whoami", { stdout: "root" })
+    const ssh = new MockSystemClient()
     ssh.onExec("grep -qxF", { stdout: "missing" })
     ssh.onExec("tee -a", { exitCode: 1, stderr: "write error" })
 
@@ -157,8 +153,7 @@ describe("runInjectSshKeys", () => {
   })
 
   test("returns failure when chmod/chown fails (line 73)", async () => {
-    const ssh = new MockSshClient()
-    ssh.onExec("whoami", { stdout: "root" })
+    const ssh = new MockSystemClient()
     ssh.onExec("grep -qxF", { stdout: "missing" })
     ssh.onExec("chmod 600", { exitCode: 1, stderr: "chown failed" })
 
@@ -176,8 +171,7 @@ describe("runInjectSshKeys", () => {
   })
 
   test("adds warning when coolify root injection fails (line 37)", async () => {
-    const ssh = new MockSshClient()
-    ssh.onExec("whoami", { stdout: "deploy" })
+    const ssh = new MockSystemClient()
     // First mkdir succeeds (for deploy), second mkdir fails (for root)
     ssh.onExec(/mkdir -p \/home\/deploy/, { exitCode: 0 })
     ssh.onExec(/mkdir -p \/root/, { exitCode: 1, stderr: "root denied" })

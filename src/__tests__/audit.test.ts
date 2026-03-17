@@ -1,5 +1,5 @@
 import { beforeEach, mock as bunMock, describe, expect, test } from "bun:test"
-import { MockSshClient } from "./helpers/mock-ssh.ts"
+import { MockSystemClient } from "./helpers/mock-ssh.ts"
 
 let noteCalls: Array<{ message: string; title: string }> = []
 
@@ -22,13 +22,13 @@ import type { AuditResult } from "../types.ts"
 
 describe("runAudit", () => {
   test("returns exactly 10 checks", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runAudit(ssh)
     expect(result.checks).toHaveLength(12)
   })
 
   test("check names match expected list", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runAudit(ssh)
     const names = result.checks.map((c) => c.name)
     expect(names).toEqual([
@@ -48,7 +48,7 @@ describe("runAudit", () => {
   })
 
   test("parses SSH port from stdout", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("grep -h '^Port '", { stdout: "Port 2222" })
     const result = await runAudit(ssh)
     const portCheck = result.checks.find((c) => c.name === "SSH Port")
@@ -56,14 +56,14 @@ describe("runAudit", () => {
   })
 
   test("defaults SSH port to 22 when not configured", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runAudit(ssh)
     const portCheck = result.checks.find((c) => c.name === "SSH Port")
     expect(portCheck?.status).toBe("22 (default)")
   })
 
   test("parses PermitRootLogin", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("grep -h '^PermitRootLogin '", { stdout: "PermitRootLogin prohibit-password" })
     const result = await runAudit(ssh)
     const check = result.checks.find((c) => c.name === "Root Login")
@@ -71,7 +71,7 @@ describe("runAudit", () => {
   })
 
   test("detects UFW active", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("which ufw", { stdout: "Status: active" })
     const result = await runAudit(ssh)
     const check = result.checks.find((c) => c.name === "UFW Firewall")
@@ -79,7 +79,7 @@ describe("runAudit", () => {
   })
 
   test("detects UFW not installed", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("which ufw", { stdout: "not installed" })
     const result = await runAudit(ssh)
     const check = result.checks.find((c) => c.name === "UFW Firewall")
@@ -87,7 +87,7 @@ describe("runAudit", () => {
   })
 
   test("detects fail2ban active", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("systemctl is-active fail2ban", { stdout: "active" })
     const result = await runAudit(ssh)
     const check = result.checks.find((c) => c.name === "Fail2ban")
@@ -95,7 +95,7 @@ describe("runAudit", () => {
   })
 
   test("detects sysctl hardened", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("test -f /etc/sysctl.d/99-securbuntu.conf", { stdout: "hardened" })
     const result = await runAudit(ssh)
     const check = result.checks.find((c) => c.name === "Sysctl Hardening")
@@ -103,14 +103,14 @@ describe("runAudit", () => {
   })
 
   test("detects SSH banner not set", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runAudit(ssh)
     const check = result.checks.find((c) => c.name === "SSH Banner")
     expect(check?.status).toBe("not set")
   })
 
   test("detects SSH banner configured", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("grep -h '^Banner '", { stdout: "Banner /etc/issue.net" })
     const result = await runAudit(ssh)
     const check = result.checks.find((c) => c.name === "SSH Banner")
@@ -118,7 +118,7 @@ describe("runAudit", () => {
   })
 
   test("detects unnecessary services", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("systemctl list-units --type=service --state=active", {
       stdout:
         "cups.service loaded active running CUPS Scheduler\navahi-daemon.service loaded active running Avahi mDNS",
@@ -131,7 +131,7 @@ describe("runAudit", () => {
   })
 
   test("reports no unnecessary services when clean", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("systemctl list-units --type=service --state=active", {
       stdout: "ssh.service loaded active running OpenBSD Secure Shell server",
     })
@@ -141,7 +141,7 @@ describe("runAudit", () => {
   })
 
   test("reports all correct file permissions", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("ls /etc/ssh/ssh_host_*_key", { exitCode: 1 })
     ssh.onExec("stat -c '%a %U %G' '/etc/passwd'", { stdout: "644 root root" })
     ssh.onExec("stat -c '%a %U %G' '/etc/shadow'", { stdout: "640 root shadow" })
@@ -155,7 +155,7 @@ describe("runAudit", () => {
   })
 
   test("reports non-conforming file permissions", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("ls /etc/ssh/ssh_host_*_key", { exitCode: 1 })
     ssh.onExec("stat -c '%a %U %G' '/etc/passwd'", { stdout: "644 root root" })
     ssh.onExec("stat -c '%a %U %G' '/etc/shadow'", { stdout: "644 root root" }) // wrong

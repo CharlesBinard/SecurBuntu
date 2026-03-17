@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { runHardenSshConfig } from "../../tasks/ssh-config.ts"
 import type { HardeningOptions, ServerInfo } from "../../types.ts"
-import { MockSshClient } from "../helpers/mock-ssh.ts"
+import { MockSystemClient } from "../helpers/mock-ssh.ts"
 
 const defaultOptions: HardeningOptions = {
   createSudoUser: false,
@@ -22,6 +22,7 @@ const defaultOptions: HardeningOptions = {
   servicesToDisable: [],
   fixFilePermissions: false,
   currentSshPort: 22,
+  connectionUsername: "root",
 }
 
 const defaultServer: ServerInfo = {
@@ -34,14 +35,14 @@ const defaultServer: ServerInfo = {
 
 describe("runHardenSshConfig", () => {
   test("skips when no SSH changes requested", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     const result = await runHardenSshConfig(ssh, defaultOptions, defaultServer)
     expect(result.success).toBe(true)
     expect(result.message).toStartWith("Skipped")
   })
 
   test("writes SSH config with custom port", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("echo ok", { stdout: "ok" })
 
@@ -59,7 +60,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("uses currentSshPort when port is not changed", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("echo ok", { stdout: "ok" })
 
@@ -77,7 +78,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("sets PermitRootLogin to no when sudo user created", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("echo ok", { stdout: "ok" })
 
@@ -96,7 +97,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("sets PermitRootLogin to prohibit-password for Coolify", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("echo ok", { stdout: "ok" })
 
@@ -114,7 +115,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("disables password authentication", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("echo ok", { stdout: "ok" })
 
@@ -130,7 +131,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("writes SSH banner when enabled", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("echo ok", { stdout: "ok" })
 
@@ -153,7 +154,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("does not add Banner directive when banner disabled", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("echo ok", { stdout: "ok" })
 
@@ -170,7 +171,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("handles cloud-init backup", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("echo ok", { stdout: "ok" })
 
@@ -184,7 +185,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("rolls back on sshd -t validation failure", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 1, stderr: "bad config" })
 
     const options = { ...defaultOptions, changeSshPort: true, newSshPort: 2222 }
@@ -198,7 +199,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("rolls back cloud-init on validation failure", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 1, stderr: "bad config" })
 
     const server = { ...defaultServer, hasCloudInit: true }
@@ -210,7 +211,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("rolls back on SSH restart failure", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("systemctl restart ssh.service", { exitCode: 1, stderr: "restart failed" })
 
@@ -224,7 +225,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("returns connection-lost message when verify fails", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 0 })
     // echo ok NOT mocked — defaults to stdout: ""
 
@@ -238,7 +239,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("handles socket activation for port change on Ubuntu 24.04+", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("echo ok", { stdout: "ok" })
 
@@ -251,7 +252,7 @@ describe("runHardenSshConfig", () => {
   })
 
   test("includes standard hardening directives", async () => {
-    const ssh = new MockSshClient()
+    const ssh = new MockSystemClient()
     ssh.onExec("sshd -t", { exitCode: 0 })
     ssh.onExec("echo ok", { stdout: "ok" })
 

@@ -1,5 +1,5 @@
 import { existsSync } from "fs"
-import type { ServerInfo, SshClient } from "../types.ts"
+import type { ServerInfo, SystemClient } from "../types.ts"
 
 export interface LocalSshKey {
   path: string
@@ -52,8 +52,8 @@ export function detectDefaultPubKeyPath(): string | undefined {
   return undefined
 }
 
-export async function detectServerInfo(ssh: SshClient): Promise<ServerInfo> {
-  const osResult = await ssh.exec('. /etc/os-release && echo "$ID|$VERSION_ID|$VERSION_CODENAME"')
+export async function detectServerInfo(client: SystemClient): Promise<ServerInfo> {
+  const osResult = await client.exec('. /etc/os-release && echo "$ID|$VERSION_ID|$VERSION_CODENAME"')
   if (osResult.exitCode !== 0) {
     throw new Error(`Failed to detect OS: ${osResult.stderr}`)
   }
@@ -71,14 +71,14 @@ export async function detectServerInfo(ssh: SshClient): Promise<ServerInfo> {
     throw new Error(`Ubuntu ${versionId} is not supported. Minimum required: 22.04`)
   }
 
-  const socketResult = await ssh.exec("systemctl is-active ssh.socket 2>/dev/null || true")
-  const cloudInitResult = await ssh.exec("test -f /etc/ssh/sshd_config.d/50-cloud-init.conf && echo yes || echo no")
+  const socketResult = await client.exec("systemctl is-active ssh.socket 2>/dev/null || true")
+  const cloudInitResult = await client.exec("test -f /etc/ssh/sshd_config.d/50-cloud-init.conf && echo yes || echo no")
 
   return {
     ubuntuVersion: versionId,
     ubuntuCodename: parts[2] ?? "",
     usesSocketActivation: socketResult.stdout === "active",
     hasCloudInit: cloudInitResult.stdout === "yes",
-    isRoot: ssh.isRoot,
+    isRoot: client.isRoot,
   }
 }
