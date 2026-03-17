@@ -1,6 +1,6 @@
-import type { CommandResult, ExecOptions, SystemClient } from "../types.ts"
 import { shellEscape } from "../ssh/connection.ts"
 import { DEFAULT_TIMEOUT, spawnProcess } from "../ssh/process.ts"
+import type { CommandResult, ExecOptions, SystemClient } from "../types.ts"
 
 export class LocalClient implements SystemClient {
   readonly isRoot: boolean
