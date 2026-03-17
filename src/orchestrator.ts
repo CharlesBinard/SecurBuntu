@@ -132,6 +132,7 @@ async function executeAndReport(
   client: SystemClient,
   host: string,
   username: string,
+  mode: "local" | "ssh",
   options: HardeningOptions,
   serverInfo: ServerInfo,
   auditResult: AuditResult,
@@ -159,6 +160,7 @@ async function executeAndReport(
   const report: Report = {
     serverIp: host,
     connectionUser: username,
+    mode,
     sudoUser: options.createSudoUser ? options.sudoUsername : undefined,
     date: new Date().toISOString().split("T")[0] ?? "",
     ubuntuVersion: serverInfo.ubuntuVersion,
@@ -237,6 +239,7 @@ export async function run(args: RunArgs, connection: ConnectionResult): Promise<
       client,
       host,
       username,
+      mode,
       options,
       serverInfo,
       auditResult,

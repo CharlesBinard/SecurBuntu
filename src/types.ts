@@ -86,6 +86,7 @@ export interface TaskResult {
 export interface Report {
   serverIp: string
   connectionUser: string
+  mode: "local" | "ssh"
   sudoUser?: string
   date: string
   ubuntuVersion: string

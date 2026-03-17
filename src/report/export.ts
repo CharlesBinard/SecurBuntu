@@ -35,7 +35,8 @@ export function exportReportMarkdown(report: Report): string {
   const filename = `securbuntu-report-${sanitizedIp}-${report.date}.md`
 
   const lines: string[] = []
-  lines.push("# SecurBuntu Hardening Report")
+  const title = report.mode === "local" ? "# SecurBuntu Local Hardening Report" : "# SecurBuntu Hardening Report"
+  lines.push(title)
   lines.push("")
   lines.push("| Field | Value |")
   lines.push("|-------|-------|")
