@@ -1,4 +1,5 @@
 import { appendFileSync, existsSync, mkdirSync } from "fs"
+import { resolveHome } from "../platform/home.ts"
 
 export type HostKeyResult =
   | { known: true }
@@ -6,7 +7,7 @@ export type HostKeyResult =
   | { known: false; fingerprint: null; rawKeys: "" }
 
 export async function fetchHostKeyFingerprint(host: string, port: number): Promise<HostKeyResult> {
-  const home = process.env.HOME ?? ""
+  const home = resolveHome()
   const knownHostsPath = `${home}/.ssh/known_hosts`
 
   // Check if host is already in known_hosts
@@ -53,7 +54,7 @@ export async function fetchHostKeyFingerprint(host: string, port: number): Promi
 }
 
 export function addToKnownHosts(rawKeys: string): void {
-  const home = process.env.HOME ?? ""
+  const home = resolveHome()
   const sshDir = `${home}/.ssh`
   const knownHostsPath = `${sshDir}/known_hosts`
   mkdirSync(sshDir, { recursive: true })
