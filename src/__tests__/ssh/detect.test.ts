@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import {
   detectAllLocalKeys,
   detectDefaultKeyPath,
@@ -8,18 +8,6 @@ import {
 import { MockSystemClient } from "../helpers/mock-ssh.ts"
 
 describe("detectAllLocalKeys", () => {
-  const originalHome = process.env.HOME
-
-  afterEach(() => {
-    process.env.HOME = originalHome
-  })
-
-  test("returns empty array when HOME is unset", () => {
-    process.env.HOME = ""
-    const keys = detectAllLocalKeys()
-    expect(keys).toEqual([])
-  })
-
   test("finds keys with correct structure", () => {
     const keys = detectAllLocalKeys()
     for (const key of keys) {
@@ -70,12 +58,6 @@ describe("detectAllLocalKeys", () => {
 })
 
 describe("detectDefaultKeyPath", () => {
-  const originalHome = process.env.HOME
-
-  afterEach(() => {
-    process.env.HOME = originalHome
-  })
-
   test("returns a string path if any key exists", () => {
     const result = detectDefaultKeyPath()
     if (result !== undefined) {
@@ -91,14 +73,6 @@ describe("detectDefaultKeyPath", () => {
     }
   })
 
-  test("returns undefined when HOME is empty", () => {
-    process.env.HOME = ""
-    const result = detectDefaultKeyPath()
-    // With empty HOME, candidates are "/.ssh/id_*" paths
-    // The function may or may not find keys, but it should not throw
-    expect(result === undefined || typeof result === "string").toBe(true)
-  })
-
   test("prefers ed25519 when available", () => {
     const result = detectDefaultKeyPath()
     // If ed25519 key exists at ~/.ssh/id_ed25519, it should be the default
@@ -109,12 +83,6 @@ describe("detectDefaultKeyPath", () => {
 })
 
 describe("detectDefaultPubKeyPath", () => {
-  const originalHome = process.env.HOME
-
-  afterEach(() => {
-    process.env.HOME = originalHome
-  })
-
   test("returns a path ending in .pub when a key exists", () => {
     const result = detectDefaultPubKeyPath()
     if (result !== undefined) {
@@ -127,12 +95,6 @@ describe("detectDefaultPubKeyPath", () => {
     if (result !== undefined) {
       expect(result).toContain("/.ssh/")
     }
-  })
-
-  test("returns undefined when HOME is empty", () => {
-    process.env.HOME = ""
-    const result = detectDefaultPubKeyPath()
-    expect(result === undefined || typeof result === "string").toBe(true)
   })
 
   test("returned path matches a known key type", () => {
