@@ -1,13 +1,9 @@
 import * as p from "@clack/prompts"
 import { existsSync } from "fs"
 import pc from "picocolors"
-import {
-  checkSshCopyIdInstalled,
-  checkSshpassInstalled,
-  detectAllLocalKeys,
-  detectDefaultKeyPath,
-} from "../ssh/index.ts"
-import type { ConnectionConfig } from "../types.ts"
+import { resolveHome } from "../platform/home.ts"
+import { detectAllLocalKeys, detectDefaultKeyPath } from "../ssh/index.ts"
+import type { ConnectionConfig, HostCapabilities } from "../types.ts"
 import { handleCancel, isCancel, unwrapText } from "./helpers.ts"
 
 async function promptManualKeyPath(): Promise<string> {
@@ -19,17 +15,18 @@ async function promptManualKeyPath(): Promise<string> {
       defaultValue: defaultKey,
       validate(value) {
         if (!value?.trim()) return "Key path is required"
-        const resolved = value.replace("~", process.env.HOME ?? "")
+        const resolved = value.replace("~", resolveHome())
         if (!existsSync(resolved)) return `File not found: ${resolved}`
         return undefined
       },
     }),
   )
-  return keyPath.replace("~", process.env.HOME ?? "")
+  return keyPath.replace("~", resolveHome())
 }
 
 async function promptAuthCredentials(
   authMethod: "key" | "password" | "copy",
+  capabilities: HostCapabilities,
 ): Promise<{ privateKeyPath?: string; password?: string }> {
   if (authMethod === "key" || authMethod === "copy") {
     const localKeys = detectAllLocalKeys()
@@ -66,8 +63,7 @@ async function promptAuthCredentials(
     return { privateKeyPath }
   }
 
-  const hasSshpass = await checkSshpassInstalled()
-  if (!hasSshpass) {
+  if (!capabilities.sshpass) {
     p.log.error(
       `${pc.red("sshpass is required for password authentication but is not installed.")}\n` +
         `  ${pc.dim("Install it with:")}\n` +
@@ -90,7 +86,7 @@ async function promptAuthCredentials(
   return { password }
 }
 
-async function validateCopyKeyPrerequisites(privateKeyPath: string): Promise<void> {
+export async function validateCopyKeyPrerequisites(privateKeyPath: string): Promise<void> {
   const pubKeyPath = `${privateKeyPath}.pub`
   if (!existsSync(pubKeyPath)) {
     p.log.error(
@@ -99,20 +95,9 @@ async function validateCopyKeyPrerequisites(privateKeyPath: string): Promise<voi
     )
     throw new Error(`Public key not found at ${pubKeyPath}`)
   }
-
-  const hasSshCopyId = await checkSshCopyIdInstalled()
-  if (!hasSshCopyId) {
-    p.log.error(
-      `${pc.red("ssh-copy-id is required but is not installed.")}\n` +
-        `  ${pc.dim("Install it with:")}\n` +
-        `  ${pc.cyan("  Ubuntu/Debian: sudo apt install openssh-client")}\n` +
-        `  ${pc.cyan("  macOS:         brew install ssh-copy-id")}`,
-    )
-    throw new Error("ssh-copy-id is not installed")
-  }
 }
 
-export async function promptConnection(): Promise<ConnectionConfig> {
+export async function promptConnection(capabilities: HostCapabilities): Promise<ConnectionConfig> {
   const host = unwrapText(
     await p.text({
       message: "Enter the server IP address or hostname",
@@ -153,17 +138,19 @@ export async function promptConnection(): Promise<ConnectionConfig> {
   )
   const port = parseInt(portStr, 10)
 
+  const authOptions: { value: "key" | "password" | "copy"; label: string; hint?: string }[] = [
+    { value: "key", label: "SSH Key", hint: "recommended" },
+    ...(capabilities.sshpass ? [{ value: "password" as const, label: "Password" }] : []),
+    { value: "copy", label: "Copy my SSH key to server", hint: "needs password" },
+  ]
+
   const authMethod = await p.select({
     message: "How do you want to authenticate?",
-    options: [
-      { value: "key" as const, label: "SSH Key", hint: "recommended" },
-      { value: "password" as const, label: "Password" },
-      { value: "copy" as const, label: "Copy my SSH key to server", hint: "needs password" },
-    ],
+    options: authOptions,
   })
   if (isCancel(authMethod)) handleCancel()
 
-  const { privateKeyPath, password } = await promptAuthCredentials(authMethod)
+  const { privateKeyPath, password } = await promptAuthCredentials(authMethod, capabilities)
 
   return {
     host: host.trim(),

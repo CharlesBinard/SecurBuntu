@@ -1,6 +1,6 @@
 export { connect } from "./connection.ts"
 export type { CopyKeyResult } from "./copy-key.ts"
-export { checkSshCopyIdInstalled, checkSshpassInstalled, copyKeyToServer } from "./copy-key.ts"
+export { copyKeyToServer } from "./copy-key.ts"
 export type { LocalSshKey } from "./detect.ts"
 export { detectAllLocalKeys, detectDefaultKeyPath, detectDefaultPubKeyPath, detectServerInfo } from "./detect.ts"
 export type { HostKeyResult } from "./host-keys.ts"

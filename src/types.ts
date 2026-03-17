@@ -124,3 +124,19 @@ export interface ConnectionResult {
   host: string
   username: string
 }
+
+export interface HostPlatform {
+  os: "linux" | "macos" | "windows"
+  distro: string | null
+  version: string | null
+  codename: string | null
+  isCompatibleTarget: boolean
+}
+
+export interface HostCapabilities {
+  ssh: boolean
+  sshCopyId: boolean
+  sshpass: boolean
+  sshKeygen: boolean
+  sshKeyscan: boolean
+}

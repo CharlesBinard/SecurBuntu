@@ -1,4 +1,6 @@
 import { existsSync } from "fs"
+import { isVersionAtLeast, parseOsRelease } from "../platform/detect.ts"
+import { resolveHome } from "../platform/home.ts"
 import type { ServerInfo, SystemClient } from "../types.ts"
 
 export interface LocalSshKey {
@@ -7,8 +9,7 @@ export interface LocalSshKey {
 }
 
 export function detectAllLocalKeys(): LocalSshKey[] {
-  const home = process.env.HOME ?? ""
-  if (!home) return []
+  const home = resolveHome()
   const sshDir = `${home}/.ssh`
   const patterns: Array<{ filename: string; type: string }> = [
     { filename: "id_ed25519", type: "ed25519" },
@@ -27,7 +28,7 @@ export function detectAllLocalKeys(): LocalSshKey[] {
 }
 
 export function detectDefaultKeyPath(): string | undefined {
-  const home = process.env.HOME ?? ""
+  const home = resolveHome()
   const candidates = [`${home}/.ssh/id_ed25519`, `${home}/.ssh/id_ecdsa`, `${home}/.ssh/id_rsa`]
   for (const candidate of candidates) {
     try {
@@ -40,7 +41,7 @@ export function detectDefaultKeyPath(): string | undefined {
 }
 
 export function detectDefaultPubKeyPath(): string | undefined {
-  const home = process.env.HOME ?? ""
+  const home = resolveHome()
   const candidates = [`${home}/.ssh/id_ed25519.pub`, `${home}/.ssh/id_ecdsa.pub`, `${home}/.ssh/id_rsa.pub`]
   for (const candidate of candidates) {
     try {
@@ -58,16 +59,12 @@ export async function detectServerInfo(client: SystemClient): Promise<ServerInfo
     throw new Error(`Failed to detect OS: ${osResult.stderr}`)
   }
 
-  const parts = osResult.stdout.split("|")
-  if (parts.length < 3 || parts[0] !== "ubuntu") {
-    throw new Error(`Unsupported OS: ${parts[0] ?? "unknown"}. SecurBuntu only supports Ubuntu.`)
+  const { distro, version: versionId, codename } = parseOsRelease(osResult.stdout)
+  if (distro !== "ubuntu") {
+    throw new Error(`Unsupported OS: ${distro || "unknown"}. SecurBuntu only supports Ubuntu.`)
   }
 
-  const versionId = parts[1] ?? ""
-  const versionParts = versionId.split(".")
-  const major = parseInt(versionParts[0] ?? "0", 10)
-  const minor = parseInt(versionParts[1] ?? "0", 10)
-  if (major < 22 || (major === 22 && minor < 4)) {
+  if (!isVersionAtLeast(versionId, 22, 4)) {
     throw new Error(`Ubuntu ${versionId} is not supported. Minimum required: 22.04`)
   }
 
@@ -76,7 +73,7 @@ export async function detectServerInfo(client: SystemClient): Promise<ServerInfo
 
   return {
     ubuntuVersion: versionId,
-    ubuntuCodename: parts[2] ?? "",
+    ubuntuCodename: codename,
     usesSocketActivation: socketResult.stdout === "active",
     hasCloudInit: cloudInitResult.stdout === "yes",
     isRoot: client.isRoot,

@@ -3,32 +3,6 @@ export interface CopyKeyResult {
   passwordAuthDisabled: boolean
 }
 
-export async function checkSshpassInstalled(): Promise<boolean> {
-  try {
-    const proc = Bun.spawn(["which", "sshpass"], {
-      stdout: "pipe",
-      stderr: "pipe",
-    })
-    await proc.exited
-    return proc.exitCode === 0
-  } catch {
-    return false
-  }
-}
-
-export async function checkSshCopyIdInstalled(): Promise<boolean> {
-  try {
-    const proc = Bun.spawn(["which", "ssh-copy-id"], {
-      stdout: "pipe",
-      stderr: "pipe",
-    })
-    await proc.exited
-    return proc.exitCode === 0
-  } catch {
-    return false
-  }
-}
-
 export async function copyKeyToServer(
   host: string,
   user: string,
