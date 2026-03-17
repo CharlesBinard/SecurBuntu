@@ -22,6 +22,7 @@ const defaultOptions: HardeningOptions = {
   servicesToDisable: [],
   fixFilePermissions: false,
   currentSshPort: 22,
+  connectionUsername: "root",
 }
 
 const makeServer = (version: string): ServerInfo => ({

@@ -49,6 +49,7 @@ export interface HardeningOptions {
   servicesToDisable: string[]
   fixFilePermissions: boolean
   currentSshPort: number
+  connectionUsername: string
 }
 
 export interface UfwPort {

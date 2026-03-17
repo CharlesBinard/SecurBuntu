@@ -13,8 +13,7 @@ export const runInjectSshKeys: HardeningTask = async (client, options) => {
   const pubKeyContent = readFileSync(options.personalKeyPath, "utf-8").trim()
   const details: string[] = []
 
-  const targetUser =
-    options.createSudoUser && options.sudoUsername ? options.sudoUsername : (await client.exec("whoami")).stdout
+  const targetUser = options.createSudoUser && options.sudoUsername ? options.sudoUsername : options.connectionUsername
 
   const targetHome = targetUser === "root" ? "/root" : `/home/${targetUser}`
 
