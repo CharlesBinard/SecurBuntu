@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import pc from "picocolors"
 import { initVersion, parseArgs, showBanner } from "./cli/index.ts"
+import { selectMode } from "./connection/index.ts"
 import { run } from "./orchestrator.ts"
 
 async function main(): Promise<void> {
@@ -8,7 +9,8 @@ async function main(): Promise<void> {
   const args = parseArgs()
   if (!args) return
   showBanner()
-  await run(args)
+  const connection = await selectMode()
+  await run(args, connection)
 }
 
 main().catch((error) => {
