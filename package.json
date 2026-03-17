@@ -12,11 +12,13 @@
     "lint": "biome check ./src",
     "lint:fix": "biome check --write ./src",
     "format": "biome format --write ./src",
-    "check": "biome check ./src && tsc --noEmit"
+    "check": "biome check ./src && tsc --noEmit",
+    "prepare": "lefthook install"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.7",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "lefthook": "^2.1.4"
   },
   "peerDependencies": {
     "typescript": "^5"
