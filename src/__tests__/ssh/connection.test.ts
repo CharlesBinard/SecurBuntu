@@ -1,6 +1,22 @@
 import { describe, expect, test } from "bun:test"
 import { buildSshArgs, hashControlPath, shellEscape } from "../../ssh/connection.ts"
-import type { ConnectionConfig } from "../../types.ts"
+import type { ConnectionConfig, HostPlatform } from "../../types.ts"
+
+const linuxPlatform: HostPlatform = {
+  os: "linux",
+  distro: "ubuntu",
+  version: "24.04",
+  codename: "noble",
+  isCompatibleTarget: true,
+}
+
+const windowsPlatform: HostPlatform = {
+  os: "windows",
+  distro: null,
+  version: null,
+  codename: null,
+  isCompatibleTarget: false,
+}
 
 describe("shellEscape", () => {
   test("wraps simple string in single quotes", () => {
@@ -92,23 +108,23 @@ describe("buildSshArgs", () => {
   }
 
   test("includes ControlPath from config", () => {
-    const args = buildSshArgs(baseConfig)
+    const args = buildSshArgs(baseConfig, linuxPlatform)
     const idx = args.indexOf("ControlPath=/tmp/securbuntu-abc123")
     expect(idx).toBeGreaterThan(-1)
   })
 
   test("includes StrictHostKeyChecking=yes", () => {
-    const args = buildSshArgs(baseConfig)
+    const args = buildSshArgs(baseConfig, linuxPlatform)
     expect(args).toContain("StrictHostKeyChecking=yes")
   })
 
   test("includes ConnectTimeout=10", () => {
-    const args = buildSshArgs(baseConfig)
+    const args = buildSshArgs(baseConfig, linuxPlatform)
     expect(args).toContain("ConnectTimeout=10")
   })
 
   test("includes port as string", () => {
-    const args = buildSshArgs(baseConfig)
+    const args = buildSshArgs(baseConfig, linuxPlatform)
     const portIdx = args.indexOf("-p")
     expect(portIdx).toBeGreaterThan(-1)
     expect(args[portIdx + 1]).toBe("22")
@@ -116,7 +132,7 @@ describe("buildSshArgs", () => {
 
   test("uses custom port", () => {
     const config: ConnectionConfig = { ...baseConfig, port: 2222 }
-    const args = buildSshArgs(config)
+    const args = buildSshArgs(config, linuxPlatform)
     const portIdx = args.indexOf("-p")
     expect(args[portIdx + 1]).toBe("2222")
   })
@@ -127,24 +143,24 @@ describe("buildSshArgs", () => {
       authMethod: "key",
       privateKeyPath: "/home/user/.ssh/id_ed25519",
     }
-    const args = buildSshArgs(config)
+    const args = buildSshArgs(config, linuxPlatform)
     expect(args).toContain("-i")
     expect(args).toContain("/home/user/.ssh/id_ed25519")
   })
 
   test("does not include -i flag for password auth", () => {
-    const args = buildSshArgs(baseConfig)
+    const args = buildSshArgs(baseConfig, linuxPlatform)
     expect(args).not.toContain("-i")
   })
 
   test("does not include -i when authMethod is key but no privateKeyPath", () => {
     const config: ConnectionConfig = { ...baseConfig, authMethod: "key" }
-    const args = buildSshArgs(config)
+    const args = buildSshArgs(config, linuxPlatform)
     expect(args).not.toContain("-i")
   })
 
   test("all -o flags are paired correctly", () => {
-    const args = buildSshArgs(baseConfig)
+    const args = buildSshArgs(baseConfig, linuxPlatform)
     for (let i = 0; i < args.length; i++) {
       if (args[i] === "-o") {
         const next = args[i + 1]
@@ -153,5 +169,29 @@ describe("buildSshArgs", () => {
         expect(next?.length).toBeGreaterThan(0)
       }
     }
+  })
+
+  test("includes ControlPath on Linux", () => {
+    const args = buildSshArgs(baseConfig, linuxPlatform)
+    const hasControlPath = args.some((a) => a.startsWith("ControlPath="))
+    expect(hasControlPath).toBe(true)
+  })
+
+  test("excludes ControlPath on Windows", () => {
+    const args = buildSshArgs(baseConfig, windowsPlatform)
+    const hasControlPath = args.some((a) => a.startsWith("ControlPath="))
+    expect(hasControlPath).toBe(false)
+  })
+
+  test("still includes StrictHostKeyChecking on Windows", () => {
+    const args = buildSshArgs(baseConfig, windowsPlatform)
+    expect(args).toContain("StrictHostKeyChecking=yes")
+  })
+
+  test("still includes port on Windows", () => {
+    const args = buildSshArgs(baseConfig, windowsPlatform)
+    const portIdx = args.indexOf("-p")
+    expect(portIdx).toBeGreaterThan(-1)
+    expect(args[portIdx + 1]).toBe("22")
   })
 })
