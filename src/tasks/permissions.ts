@@ -1,4 +1,4 @@
-import type { HardeningTask, SshClient } from "../types.ts"
+import type { HardeningTask, SystemClient } from "../types.ts"
 
 interface FilePermission {
   path: string
@@ -16,8 +16,8 @@ const EXPECTED_PERMISSIONS: readonly FilePermission[] = [
   { path: "/etc/crontab", mode: "600", owner: "root", group: "root" },
 ]
 
-async function getSshHostKeyPaths(ssh: SshClient): Promise<string[]> {
-  const result = await ssh.exec("ls /etc/ssh/ssh_host_*_key 2>/dev/null")
+async function getSshHostKeyPaths(client: SystemClient): Promise<string[]> {
+  const result = await client.exec("ls /etc/ssh/ssh_host_*_key 2>/dev/null")
   if (result.exitCode !== 0 || result.stdout.trim() === "") return []
   return result.stdout.trim().split("\n")
 }
@@ -28,8 +28,8 @@ export interface PermissionViolation {
   expected: FilePermission
 }
 
-export async function checkPermissions(ssh: SshClient): Promise<PermissionViolation[]> {
-  const hostKeys = await getSshHostKeyPaths(ssh)
+export async function checkPermissions(client: SystemClient): Promise<PermissionViolation[]> {
+  const hostKeys = await getSshHostKeyPaths(client)
   const allFiles: FilePermission[] = [
     ...EXPECTED_PERMISSIONS,
     ...hostKeys.map((path) => ({ path, mode: "600", owner: "root", group: "root" })),
@@ -38,7 +38,7 @@ export async function checkPermissions(ssh: SshClient): Promise<PermissionViolat
   const violations: PermissionViolation[] = []
 
   for (const expected of allFiles) {
-    const result = await ssh.exec(`stat -c '%a %U %G' '${expected.path}' 2>/dev/null`)
+    const result = await client.exec(`stat -c '%a %U %G' '${expected.path}' 2>/dev/null`)
     if (result.exitCode !== 0 || result.stdout.trim() === "") continue
 
     const parts = result.stdout.trim().split(" ")
@@ -53,7 +53,7 @@ export async function checkPermissions(ssh: SshClient): Promise<PermissionViolat
   return violations
 }
 
-export const runFixPermissions: HardeningTask = async (ssh, options) => {
+export const runFixPermissions: HardeningTask = async (client, options) => {
   if (!options.fixFilePermissions) {
     return {
       name: "File Permissions",
@@ -62,7 +62,7 @@ export const runFixPermissions: HardeningTask = async (ssh, options) => {
     }
   }
 
-  const violations = await checkPermissions(ssh)
+  const violations = await checkPermissions(client)
 
   if (violations.length === 0) {
     return {
@@ -76,8 +76,8 @@ export const runFixPermissions: HardeningTask = async (ssh, options) => {
   const failed: string[] = []
 
   for (const { path, expected } of violations) {
-    const chownResult = await ssh.exec(`chown ${expected.owner}:${expected.group} '${path}'`)
-    const chmodResult = await ssh.exec(`chmod ${expected.mode} '${path}'`)
+    const chownResult = await client.exec(`chown ${expected.owner}:${expected.group} '${path}'`)
+    const chmodResult = await client.exec(`chmod ${expected.mode} '${path}'`)
 
     if (chownResult.exitCode === 0 && chmodResult.exitCode === 0) {
       fixed.push(path)

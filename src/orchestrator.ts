@@ -21,7 +21,7 @@ import type {
   Report,
   ServerAuditContext,
   ServerInfo,
-  SshClient,
+  SystemClient,
 } from "./types.ts"
 
 interface RunArgs {
@@ -31,11 +31,11 @@ interface RunArgs {
 }
 
 async function detectAndAudit(
-  ssh: SshClient,
+  client: SystemClient,
   s: ReturnType<typeof spinner>,
 ): Promise<{ serverInfo: ServerInfo; auditResult: AuditResult }> {
   s.start("Detecting server configuration...")
-  const serverInfo = await detectServerInfo(ssh)
+  const serverInfo = await detectServerInfo(client)
   s.stop(`Detected Ubuntu ${pc.cyan(serverInfo.ubuntuVersion)} (${serverInfo.ubuntuCodename})`)
 
   if (serverInfo.usesSocketActivation) {
@@ -43,14 +43,14 @@ async function detectAndAudit(
   }
 
   s.start("Scanning server security configuration...")
-  const auditResult = await runAudit(ssh)
+  const auditResult = await runAudit(client)
   s.stop("Security audit complete")
   displayAudit(auditResult)
 
   return { serverInfo, auditResult }
 }
 
-async function handleAuditOnlyMode(ssh: SshClient, auditResult: AuditResult, host: string): Promise<void> {
+async function handleAuditOnlyMode(client: SystemClient, auditResult: AuditResult, host: string): Promise<void> {
   const wantExport = await promptExportAudit()
   if (wantExport) {
     const date = new Date().toISOString().split("T")[0] ?? ""
@@ -58,11 +58,11 @@ async function handleAuditOnlyMode(ssh: SshClient, auditResult: AuditResult, hos
     log.success(`Audit report saved to ${pc.cyan(filename)}`)
   }
   outro(pc.green("Audit complete."))
-  ssh.close()
+  client.close()
 }
 
 async function runSystemUpdate(
-  ssh: SshClient,
+  client: SystemClient,
   isDryRun: boolean,
   s: ReturnType<typeof spinner>,
 ): Promise<{ updateSuccess: boolean; updateMessage: string }> {
@@ -72,7 +72,7 @@ async function runSystemUpdate(
   }
 
   s.start("Updating system packages (this may take a while)...")
-  const updateResult = await ssh.exec(
+  const updateResult = await client.exec(
     "DEBIAN_FRONTEND=noninteractive apt update && DEBIAN_FRONTEND=noninteractive apt upgrade -y",
     { timeout: 900_000 },
   )
@@ -88,7 +88,7 @@ async function runSystemUpdate(
 }
 
 async function handleDryRunOrSimulate(
-  ssh: SshClient,
+  client: SystemClient,
   isDryRun: boolean,
   confirmation: "apply" | "simulate",
   options: HardeningOptions,
@@ -96,28 +96,28 @@ async function handleDryRunOrSimulate(
 ): Promise<"abort" | "proceed"> {
   if (!isDryRun && confirmation !== "simulate") return "proceed"
 
-  const dryRunSsh = new DryRunSshClient(ssh)
-  await executeTasks(dryRunSsh, options, serverInfo)
-  dryRunSsh.displaySummary()
+  const dryRunClient = new DryRunSshClient(client)
+  await executeTasks(dryRunClient, options, serverInfo)
+  dryRunClient.displaySummary()
 
   if (isDryRun) {
     outro(pc.dim("Dry-run complete. No changes were made."))
-    ssh.close()
+    client.close()
     return "abort"
   }
 
   const applyForReal = await confirm({ message: "Apply these changes for real?" })
   if (isCancel(applyForReal) || !applyForReal) {
     outro(pc.dim("Aborted. No changes were made (except system update)."))
-    ssh.close()
+    client.close()
     return "abort"
   }
 
   return "proceed"
 }
 
-async function exportLogIfNeeded(loggingSsh: LoggingSshClient, host: string, wantLog: boolean): Promise<void> {
-  if (!loggingSsh.hasEntries()) return
+async function exportLogIfNeeded(loggingClient: LoggingSshClient, host: string, wantLog: boolean): Promise<void> {
+  if (!loggingClient.hasEntries()) return
 
   const shouldSaveLog = wantLog || (await promptExportLog())
   if (!shouldSaveLog) return
@@ -125,12 +125,12 @@ async function exportLogIfNeeded(loggingSsh: LoggingSshClient, host: string, wan
   const sanitizedIp = host.replace(/:/g, "-")
   const date = new Date().toISOString().split("T")[0] ?? "unknown"
   const logFilename = `securbuntu-log-${sanitizedIp}-${date}.txt`
-  loggingSsh.flush(logFilename)
+  loggingClient.flush(logFilename)
   log.success(`Log saved to ${pc.cyan(logFilename)}`)
 }
 
 async function executeAndReport(
-  ssh: SshClient,
+  client: SystemClient,
   connectionConfig: ConnectionConfig,
   options: HardeningOptions,
   serverInfo: ServerInfo,
@@ -141,8 +141,8 @@ async function executeAndReport(
   wantLog: boolean,
   s: ReturnType<typeof spinner>,
 ): Promise<void> {
-  const loggingSsh = new LoggingSshClient(ssh)
-  const results = await executeTasks(loggingSsh, options, serverInfo)
+  const loggingClient = new LoggingSshClient(client)
+  const results = await executeTasks(loggingClient, options, serverInfo)
 
   if (!isDryRun) {
     results.unshift({
@@ -153,7 +153,7 @@ async function executeAndReport(
   }
 
   s.start("Running post-hardening audit...")
-  const postAudit = await runAudit(ssh)
+  const postAudit = await runAudit(client)
   s.stop("Post-hardening audit complete")
 
   const report: Report = {
@@ -170,7 +170,7 @@ async function executeAndReport(
 
   displayReport(report)
 
-  await exportLogIfNeeded(loggingSsh, connectionConfig.host, wantLog)
+  await exportLogIfNeeded(loggingClient, connectionConfig.host, wantLog)
 
   const wantExport = await promptExportReport()
   if (wantExport) {
@@ -184,18 +184,18 @@ async function executeAndReport(
 export async function run(args: RunArgs): Promise<void> {
   const { isDryRun, wantLog, isAuditOnly } = args
 
-  const { ssh, connectionConfig } = await connectWithRetry()
+  const { client, connectionConfig } = await connectWithRetry()
   const s = spinner()
 
   try {
-    const { serverInfo, auditResult } = await detectAndAudit(ssh, s)
+    const { serverInfo, auditResult } = await detectAndAudit(client, s)
 
     if (isAuditOnly) {
-      await handleAuditOnlyMode(ssh, auditResult, connectionConfig.host)
+      await handleAuditOnlyMode(client, auditResult, connectionConfig.host)
       return
     }
 
-    const { updateSuccess, updateMessage } = await runSystemUpdate(ssh, isDryRun, s)
+    const { updateSuccess, updateMessage } = await runSystemUpdate(client, isDryRun, s)
 
     const portCheck = auditResult.checks.find((c) => c.name === "SSH Port")
     const portStr = portCheck?.status?.replace(" (default)", "") ?? "22"
@@ -221,20 +221,20 @@ export async function run(args: RunArgs): Promise<void> {
       detectedServices,
     }
 
-    const options = await promptHardeningOptions(serverInfo, ssh, auditContext)
+    const options = await promptHardeningOptions(serverInfo, client, auditContext)
 
     const confirmation = await promptConfirmation(connectionConfig.host, options)
     if (!confirmation) {
       outro(pc.dim(`Aborted. No changes were made${isDryRun ? "." : " (except system update)."}`))
-      ssh.close()
+      client.close()
       return
     }
 
-    const dryRunResult = await handleDryRunOrSimulate(ssh, isDryRun, confirmation, options, serverInfo)
+    const dryRunResult = await handleDryRunOrSimulate(client, isDryRun, confirmation, options, serverInfo)
     if (dryRunResult === "abort") return
 
     await executeAndReport(
-      ssh,
+      client,
       connectionConfig,
       options,
       serverInfo,
@@ -246,6 +246,6 @@ export async function run(args: RunArgs): Promise<void> {
       s,
     )
   } finally {
-    ssh.close()
+    client.close()
   }
 }

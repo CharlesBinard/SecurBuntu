@@ -1,12 +1,12 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import type { CommandResult, ExecOptions, SshClient } from "./types.ts"
+import type { CommandResult, ExecOptions, SystemClient } from "./types.ts"
 
-export class DryRunSshClient implements SshClient {
+export class DryRunSshClient implements SystemClient {
   private commands: string[] = []
   readonly isRoot: boolean
 
-  constructor(private readonly real: SshClient) {
+  constructor(private readonly real: SystemClient) {
     this.isRoot = real.isRoot
   }
 

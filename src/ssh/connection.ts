@@ -1,5 +1,5 @@
 import { createHash } from "crypto"
-import type { CommandResult, ConnectionConfig, ExecOptions, SshClient } from "../types.ts"
+import type { CommandResult, ConnectionConfig, ExecOptions, SystemClient } from "../types.ts"
 import { spawnSsh, spawnSshpass } from "./process.ts"
 
 export function shellEscape(s: string): string {
@@ -30,7 +30,7 @@ export function buildSshArgs(config: ConnectionConfig): string[] {
   return args
 }
 
-export async function connect(config: ConnectionConfig): Promise<SshClient> {
+export async function connect(config: ConnectionConfig): Promise<SystemClient> {
   const controlPath = hashControlPath(config.username, config.host, config.port)
   const fullConfig: ConnectionConfig = { ...config, controlPath }
 
@@ -117,7 +117,7 @@ export async function connect(config: ConnectionConfig): Promise<SshClient> {
     return data !== undefined ? `${sudoPassword}\n${data}` : `${sudoPassword}\n`
   }
 
-  const client: SshClient = {
+  const client: SystemClient = {
     isRoot: rootUser,
 
     async exec(command: string, options?: ExecOptions): Promise<CommandResult> {

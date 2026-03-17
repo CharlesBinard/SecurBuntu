@@ -1,4 +1,4 @@
-import type { HardeningOptions, HardeningTask, SshClient, TaskResult } from "../types.ts"
+import type { HardeningOptions, HardeningTask, SystemClient, TaskResult } from "../types.ts"
 
 function buildSshConfig(options: HardeningOptions, sshPort: number, date: string): string {
   const permitRootLogin = options.permitRootLogin
@@ -23,14 +23,14 @@ function buildSshConfig(options: HardeningOptions, sshPort: number, date: string
 }
 
 async function rollbackSshConfig(
-  ssh: SshClient,
+  client: SystemClient,
   configPath: string,
   cloudInitPath: string,
   cloudInitBackedUp: boolean,
 ): Promise<void> {
-  await ssh.exec(`rm -f '${configPath}'`)
+  await client.exec(`rm -f '${configPath}'`)
   if (cloudInitBackedUp) {
-    await ssh.exec(`mv '${cloudInitPath}.securbuntu-backup' '${cloudInitPath}'`)
+    await client.exec(`mv '${cloudInitPath}.securbuntu-backup' '${cloudInitPath}'`)
   }
 }
 
@@ -51,7 +51,7 @@ function buildDetailsSummary(options: HardeningOptions, sshPort: number): string
   return detailParts.join(", ")
 }
 
-export const runHardenSshConfig: HardeningTask = async (ssh, options, server) => {
+export const runHardenSshConfig: HardeningTask = async (client, options, server) => {
   const hasChanges =
     options.changeSshPort ||
     options.disablePasswordAuth ||
@@ -80,40 +80,40 @@ export const runHardenSshConfig: HardeningTask = async (ssh, options, server) =>
       "******************************************************************",
     ].join("\n")
 
-    await ssh.writeFile("/etc/issue.net", bannerContent)
+    await client.writeFile("/etc/issue.net", bannerContent)
   }
 
   const configPath = "/etc/ssh/sshd_config.d/01-securbuntu.conf"
   const configContent = buildSshConfig(options, sshPort, date)
-  await ssh.writeFile(configPath, configContent)
+  await client.writeFile(configPath, configContent)
 
   const cloudInitPath = "/etc/ssh/sshd_config.d/50-cloud-init.conf"
   let cloudInitBackedUp = false
 
   if (server.hasCloudInit) {
-    await ssh.exec(`cp '${cloudInitPath}' '${cloudInitPath}.securbuntu-backup'`)
+    await client.exec(`cp '${cloudInitPath}' '${cloudInitPath}.securbuntu-backup'`)
     cloudInitBackedUp = true
 
-    await ssh.exec(
+    await client.exec(
       `sed -i 's/^\\(PasswordAuthentication\\)/# Disabled by SecurBuntu: \\1/' '${cloudInitPath}' && ` +
         `sed -i 's/^\\(PermitRootLogin\\)/# Disabled by SecurBuntu: \\1/' '${cloudInitPath}'`,
     )
   }
 
   const rollbackFailure = async (message: string, details: string): Promise<TaskResult> => {
-    await rollbackSshConfig(ssh, configPath, cloudInitPath, cloudInitBackedUp)
+    await rollbackSshConfig(client, configPath, cloudInitPath, cloudInitBackedUp)
     return { name: "SSH Hardening", success: false, message, details }
   }
 
-  const validateResult = await ssh.exec("sshd -t -f /etc/ssh/sshd_config")
+  const validateResult = await client.exec("sshd -t -f /etc/ssh/sshd_config")
   if (validateResult.exitCode !== 0) {
     return rollbackFailure("SSH config validation failed — changes rolled back", validateResult.stderr)
   }
 
-  const restartResult = await ssh.exec("systemctl restart ssh.service")
+  const restartResult = await client.exec("systemctl restart ssh.service")
   if (restartResult.exitCode !== 0) {
-    await rollbackSshConfig(ssh, configPath, cloudInitPath, cloudInitBackedUp)
-    await ssh.exec("systemctl restart ssh.service")
+    await rollbackSshConfig(client, configPath, cloudInitPath, cloudInitBackedUp)
+    await client.exec("systemctl restart ssh.service")
     return {
       name: "SSH Hardening",
       success: false,
@@ -123,10 +123,10 @@ export const runHardenSshConfig: HardeningTask = async (ssh, options, server) =>
   }
 
   if (server.usesSocketActivation && options.changeSshPort) {
-    await ssh.exec("systemctl daemon-reload && systemctl restart ssh.socket")
+    await client.exec("systemctl daemon-reload && systemctl restart ssh.socket")
   }
 
-  const verifyResult = await ssh.exec("echo ok")
+  const verifyResult = await client.exec("echo ok")
   if (verifyResult.stdout !== "ok") {
     return {
       name: "SSH Hardening",

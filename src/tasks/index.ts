@@ -1,6 +1,6 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import type { HardeningOptions, ServerInfo, SshClient, TaskResult } from "../types.ts"
+import type { HardeningOptions, ServerInfo, SystemClient, TaskResult } from "../types.ts"
 import { runConfigureFail2ban } from "./fail2ban.ts"
 import { runFixPermissions } from "./permissions.ts"
 import { runDisableServices } from "./services.ts"
@@ -13,7 +13,7 @@ import { runCreateUser } from "./user.ts"
 
 interface TaskEntry {
   label: string
-  run: (ssh: SshClient, options: HardeningOptions, server: ServerInfo) => Promise<TaskResult>
+  run: (client: SystemClient, options: HardeningOptions, server: ServerInfo) => Promise<TaskResult>
 }
 
 // System update is NOT in this list — it runs before the questionnaire in index.ts
@@ -43,7 +43,7 @@ async function promptContinueOnFailure(taskLabel: string): Promise<boolean> {
 }
 
 export async function executeTasks(
-  ssh: SshClient,
+  client: SystemClient,
   options: HardeningOptions,
   server: ServerInfo,
 ): Promise<TaskResult[]> {
@@ -53,7 +53,7 @@ export async function executeTasks(
   for (const task of TASKS) {
     s.start(task.label)
     try {
-      const result = await task.run(ssh, options, server)
+      const result = await task.run(client, options, server)
       if (result.message.startsWith("Skipped")) {
         s.stop(`${task.label} — skipped`)
       } else if (result.success) {

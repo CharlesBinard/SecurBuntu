@@ -16,7 +16,7 @@ export const UNNECESSARY_SERVICES: readonly ServiceDefinition[] = [
   { name: "rpcbind", description: "RPC port mapper (NFS), not needed unless using NFS" },
 ]
 
-export const runDisableServices: HardeningTask = async (ssh, options) => {
+export const runDisableServices: HardeningTask = async (client, options) => {
   if (!options.disableServices || options.servicesToDisable.length === 0) {
     return {
       name: "Disable Services",
@@ -29,12 +29,12 @@ export const runDisableServices: HardeningTask = async (ssh, options) => {
   const failed: string[] = []
 
   for (const service of options.servicesToDisable) {
-    const stopResult = await ssh.exec(`systemctl disable --now ${service}`)
+    const stopResult = await client.exec(`systemctl disable --now ${service}`)
     if (stopResult.exitCode !== 0) {
       failed.push(service)
       continue
     }
-    const maskResult = await ssh.exec(`systemctl mask ${service}`)
+    const maskResult = await client.exec(`systemctl mask ${service}`)
     if (maskResult.exitCode !== 0) {
       failed.push(service)
       continue

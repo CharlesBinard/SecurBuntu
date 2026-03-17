@@ -1,4 +1,4 @@
-import type { CommandResult, ExecOptions, SshClient } from "../../types.ts"
+import type { CommandResult, ExecOptions, SystemClient } from "../../types.ts"
 
 interface MockExecResponse {
   stdout?: string
@@ -11,7 +11,7 @@ interface ResponseRule {
   response: MockExecResponse
 }
 
-export class MockSshClient implements SshClient {
+export class MockSshClient implements SystemClient {
   readonly isRoot: boolean
   readonly commands: string[] = []
   readonly stdinData: Map<string, string> = new Map()

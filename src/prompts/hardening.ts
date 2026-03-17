@@ -2,7 +2,7 @@ import * as p from "@clack/prompts"
 import { existsSync, readFileSync } from "fs"
 import pc from "picocolors"
 import { detectDefaultPubKeyPath } from "../ssh/index.ts"
-import type { HardeningOptions, ServerAuditContext, ServerInfo, SshClient } from "../types.ts"
+import type { HardeningOptions, ServerAuditContext, ServerInfo, SystemClient } from "../types.ts"
 import { unwrapBoolean, unwrapText } from "./helpers.ts"
 import { promptServiceOptions } from "./services.ts"
 import { promptSshOptions } from "./ssh-options.ts"
@@ -79,12 +79,12 @@ async function promptPersonalKey(options: HardeningOptions): Promise<boolean> {
   return true
 }
 
-async function promptPasswordAuth(options: HardeningOptions, ssh: SshClient): Promise<void> {
+async function promptPasswordAuth(options: HardeningOptions, client: SystemClient): Promise<void> {
   const targetUser =
-    options.createSudoUser && options.sudoUsername ? options.sudoUsername : (await ssh.exec("whoami")).stdout
+    options.createSudoUser && options.sudoUsername ? options.sudoUsername : (await client.exec("whoami")).stdout
 
   const targetHome = targetUser === "root" ? "/root" : `/home/${targetUser}`
-  const existingKeysResult = await ssh.exec(
+  const existingKeysResult = await client.exec(
     `test -f '${targetHome}/.ssh/authorized_keys' && grep -c 'ssh-' '${targetHome}/.ssh/authorized_keys' || echo 0`,
   )
   const hasExistingKey = parseInt(existingKeysResult.stdout, 10) > 0
@@ -110,7 +110,7 @@ async function promptPasswordAuth(options: HardeningOptions, ssh: SshClient): Pr
 
 export async function promptHardeningOptions(
   server: ServerInfo,
-  ssh: SshClient,
+  client: SystemClient,
   auditContext: ServerAuditContext,
 ): Promise<HardeningOptions> {
   const options: HardeningOptions = {
@@ -166,7 +166,7 @@ export async function promptHardeningOptions(
   }
 
   await promptSshOptions(options, auditContext.currentSshPort)
-  await promptPasswordAuth(options, ssh)
+  await promptPasswordAuth(options, client)
 
   const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : auditContext.currentSshPort
   await promptUfwOptions(options, sshPort, auditContext.ufwActive)

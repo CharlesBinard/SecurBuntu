@@ -1,11 +1,11 @@
-import type { HardeningTask, SshClient, UfwPort } from "../types.ts"
+import type { HardeningTask, SystemClient, UfwPort } from "../types.ts"
 
 function escapeShellQuote(s: string): string {
   return s.replace(/'/g, "'\\''")
 }
 
 async function applyUfwRules(
-  ssh: SshClient,
+  client: SystemClient,
   ufwPorts: UfwPort[],
 ): Promise<{ addedRules: string[]; failedRules: string[] }> {
   const addedRules: string[] = []
@@ -13,7 +13,7 @@ async function applyUfwRules(
 
   for (const rule of ufwPorts) {
     const ruleLabel = rule.protocol === "both" ? `${rule.port}/tcp+udp` : `${rule.port}/${rule.protocol}`
-    const success = await applyOneUfwRule(ssh, rule)
+    const success = await applyOneUfwRule(client, rule)
     if (success) {
       addedRules.push(ruleLabel)
     } else {
@@ -24,20 +24,20 @@ async function applyUfwRules(
   return { addedRules, failedRules }
 }
 
-async function applyOneUfwRule(ssh: SshClient, rule: UfwPort): Promise<boolean> {
+async function applyOneUfwRule(client: SystemClient, rule: UfwPort): Promise<boolean> {
   const escapedComment = escapeShellQuote(rule.comment)
 
   if (rule.protocol === "both") {
-    const tcpResult = await ssh.exec(`ufw allow ${rule.port}/tcp comment '${escapedComment}'`)
-    const udpResult = await ssh.exec(`ufw allow ${rule.port}/udp comment '${escapedComment}'`)
+    const tcpResult = await client.exec(`ufw allow ${rule.port}/tcp comment '${escapedComment}'`)
+    const udpResult = await client.exec(`ufw allow ${rule.port}/udp comment '${escapedComment}'`)
     return tcpResult.exitCode === 0 && udpResult.exitCode === 0
   }
 
-  const result = await ssh.exec(`ufw allow ${rule.port}/${rule.protocol} comment '${escapedComment}'`)
+  const result = await client.exec(`ufw allow ${rule.port}/${rule.protocol} comment '${escapedComment}'`)
   return result.exitCode === 0
 }
 
-export const runConfigureUfw: HardeningTask = async (ssh, options) => {
+export const runConfigureUfw: HardeningTask = async (client, options) => {
   if (!options.installUfw) {
     return {
       name: "UFW Firewall",
@@ -46,7 +46,7 @@ export const runConfigureUfw: HardeningTask = async (ssh, options) => {
     }
   }
 
-  const installResult = await ssh.exec("DEBIAN_FRONTEND=noninteractive apt install -y ufw")
+  const installResult = await client.exec("DEBIAN_FRONTEND=noninteractive apt install -y ufw")
   if (installResult.exitCode !== 0) {
     return {
       name: "UFW Firewall",
@@ -56,9 +56,9 @@ export const runConfigureUfw: HardeningTask = async (ssh, options) => {
     }
   }
 
-  const { addedRules, failedRules } = await applyUfwRules(ssh, options.ufwPorts)
+  const { addedRules, failedRules } = await applyUfwRules(client, options.ufwPorts)
 
-  const enableResult = await ssh.exec("ufw --force enable")
+  const enableResult = await client.exec("ufw --force enable")
   if (enableResult.exitCode !== 0) {
     return {
       name: "UFW Firewall",
