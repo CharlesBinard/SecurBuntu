@@ -17,7 +17,7 @@ export async function promptSysctlOptions(options: HardeningOptions): Promise<vo
 
   const sysctlChoices: { value: string; label: string; hint?: string }[] = []
 
-  if (!options.configureCoolify && !options.tailscaleOptions?.advertiseExitNode) {
+  if (!(options.configureCoolify || options.tailscaleOptions?.advertiseExitNode)) {
     sysctlChoices.push({
       value: "blockForwarding",
       label: "Block traffic forwarding",

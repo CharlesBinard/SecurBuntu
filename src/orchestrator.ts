@@ -217,9 +217,7 @@ export async function run(args: RunArgs, connection: ConnectionResult): Promise<
 
     const tsCheck = auditResult.checks.find((c) => c.name === "Tailscale")
     const tailscaleActive = tsCheck?.status === "active"
-    const tailscaleHostname = tailscaleActive && tsCheck?.detail
-      ? tsCheck.detail.replace("hostname: ", "")
-      : null
+    const tailscaleHostname = tailscaleActive && tsCheck?.detail ? tsCheck.detail.replace("hostname: ", "") : null
 
     const auditContext: ServerAuditContext = {
       currentSshPort,

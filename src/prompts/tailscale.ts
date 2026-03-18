@@ -9,9 +9,7 @@ export async function promptTailscaleOptions(
   tailscaleHostname: string | null,
 ): Promise<void> {
   if (tailscaleActive) {
-    p.log.info(
-      pc.dim(`Tailscale is already active${tailscaleHostname ? ` (hostname: ${tailscaleHostname})` : ""}.`),
-    )
+    p.log.info(pc.dim(`Tailscale is already active${tailscaleHostname ? ` (hostname: ${tailscaleHostname})` : ""}.`))
     const reconfigure = unwrapBoolean(
       await p.confirm({
         message: "Tailscale is already installed. Do you want to reconfigure it?",

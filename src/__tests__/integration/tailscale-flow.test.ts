@@ -22,7 +22,7 @@ describe("Tailscale + UFW integration", () => {
       changeSshPort: false,
       disablePasswordAuth: false,
       installUfw: true,
-      ufwPorts: [{ port: "22012", protocol: "tcp", comment: "SSH" }],
+      ufwPorts: [{ port: "22_012", protocol: "tcp", comment: "SSH" }],
       installFail2ban: false,
       enableAutoUpdates: false,
       enableSysctl: false,
@@ -33,7 +33,7 @@ describe("Tailscale + UFW integration", () => {
       disableServices: false,
       servicesToDisable: [],
       fixFilePermissions: false,
-      currentSshPort: 22012,
+      currentSshPort: 22_012,
       connectionUsername: "rywoox",
       installTailscale: true,
       tailscaleOptions: {
@@ -53,7 +53,7 @@ describe("Tailscale + UFW integration", () => {
     expect(tsResult.success).toBe(true)
 
     expect(ssh.hasCommand("apt install -y ufw")).toBe(true)
-    expect(ssh.hasCommand("ufw allow 22012/tcp")).toBe(true)
+    expect(ssh.hasCommand("ufw allow 22_012/tcp")).toBe(true)
     expect(ssh.hasCommand("ufw --force enable")).toBe(true)
     expect(ssh.hasCommand("curl -fsSL https://tailscale.com/install.sh | sh")).toBe(true)
     expect(ssh.hasCommand("tailscale up")).toBe(true)

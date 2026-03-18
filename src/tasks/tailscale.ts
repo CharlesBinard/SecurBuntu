@@ -1,4 +1,4 @@
-import type { HardeningTask, SystemClient } from "../types.ts"
+import type { HardeningTask, SystemClient, TailscaleOptions, TaskResult } from "../types.ts"
 
 async function enableIpForwarding(client: SystemClient): Promise<boolean> {
   const v4 = await client.exec("sysctl -w net.ipv4.ip_forward=1")
@@ -40,70 +40,62 @@ async function configureUfwForTailscale(
   return { rules, errors }
 }
 
-export const runConfigureTailscale: HardeningTask = async (client, options) => {
-  if (!(options.installTailscale && options.tailscaleOptions)) {
-    return {
-      name: "Tailscale",
-      success: true,
-      message: "Skipped (not requested)",
-    }
+function buildUpArgs(tsOptions: TailscaleOptions): string[] {
+  const args = [`--hostname=${tsOptions.hostname}`, `--authkey=${tsOptions.authKey}`]
+  if (tsOptions.acceptRoutes) args.push("--accept-routes")
+  if (tsOptions.advertiseExitNode) args.push("--advertise-exit-node")
+  return args
+}
+
+function buildDetails(tsOptions: TailscaleOptions, ufwResult?: { rules: string[]; errors: string[] }): string {
+  const details: string[] = [`hostname: ${tsOptions.hostname}`]
+
+  if (ufwResult) {
+    if (ufwResult.rules.length > 0) details.push(`UFW rules added: ${ufwResult.rules.join(", ")}`)
+    if (ufwResult.errors.length > 0) details.push(`UFW rule failures: ${ufwResult.errors.join(", ")}`)
   }
 
-  const { hostname, authKey, acceptRoutes, advertiseExitNode, configureUfw, nfsSourceIp } = options.tailscaleOptions
+  if (tsOptions.acceptRoutes) details.push("accepting routes")
+  if (tsOptions.advertiseExitNode) details.push("exit node enabled")
+
+  return details.join("; ")
+}
+
+function fail(message: string, details?: string): TaskResult {
+  return { name: "Tailscale", success: false, message, details }
+}
+
+export const runConfigureTailscale: HardeningTask = async (client, options) => {
+  if (!(options.installTailscale && options.tailscaleOptions)) {
+    return { name: "Tailscale", success: true, message: "Skipped (not requested)" }
+  }
+
+  const tsOptions = options.tailscaleOptions
 
   const installResult = await client.exec("curl -fsSL https://tailscale.com/install.sh | sh")
   if (installResult.exitCode !== 0) {
-    return {
-      name: "Tailscale",
-      success: false,
-      message: "Failed to install Tailscale",
-      details: installResult.stderr,
-    }
+    return fail("Failed to install Tailscale", installResult.stderr)
   }
 
-  if (advertiseExitNode) {
+  if (tsOptions.advertiseExitNode) {
     const forwardingOk = await enableIpForwarding(client)
-    if (!forwardingOk) {
-      return {
-        name: "Tailscale",
-        success: false,
-        message: "Failed to enable IP forwarding for exit node",
-      }
-    }
+    if (!forwardingOk) return fail("Failed to enable IP forwarding for exit node")
   }
 
-  const upArgs = [
-    `--hostname=${hostname}`,
-    `--authkey=${authKey}`,
-  ]
-  if (acceptRoutes) upArgs.push("--accept-routes")
-  if (advertiseExitNode) upArgs.push("--advertise-exit-node")
-
-  const upResult = await client.exec(`tailscale up ${upArgs.join(" ")}`)
+  const upResult = await client.exec(`tailscale up ${buildUpArgs(tsOptions).join(" ")}`)
   if (upResult.exitCode !== 0) {
-    return {
-      name: "Tailscale",
-      success: false,
-      message: "Failed to connect to Tailscale",
-      details: upResult.stderr,
-    }
+    return fail("Failed to connect to Tailscale", upResult.stderr)
   }
 
-  const details: string[] = [`hostname: ${hostname}`]
-
-  if (configureUfw && options.installUfw) {
-    const { rules, errors } = await configureUfwForTailscale(client, nfsSourceIp)
-    if (rules.length > 0) details.push(`UFW rules added: ${rules.join(", ")}`)
-    if (errors.length > 0) details.push(`UFW rule failures: ${errors.join(", ")}`)
-  }
-
-  if (acceptRoutes) details.push("accepting routes")
-  if (advertiseExitNode) details.push("exit node enabled")
+  const ufwResult =
+    tsOptions.configureUfw && options.installUfw
+      ? await configureUfwForTailscale(client, tsOptions.nfsSourceIp)
+      : undefined
 
   return {
     name: "Tailscale",
     success: true,
     message: "Tailscale installed and connected",
-    details: details.join("; "),
+    details: buildDetails(tsOptions, ufwResult),
   }
 }

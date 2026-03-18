@@ -13,8 +13,8 @@ describe("Tailscale audit", () => {
     const result = await runAudit(ssh)
     const tsCheck = result.checks.find((c) => c.name === "Tailscale")
     expect(tsCheck).toBeDefined()
-    expect(tsCheck!.status).toBe("active")
-    expect(tsCheck!.detail).toContain("vm-media")
+    expect(tsCheck?.status).toBe("active")
+    expect(tsCheck?.detail).toContain("vm-media")
   })
 
   test("detects Tailscale as not installed", async () => {
@@ -24,6 +24,6 @@ describe("Tailscale audit", () => {
     const result = await runAudit(ssh)
     const tsCheck = result.checks.find((c) => c.name === "Tailscale")
     expect(tsCheck).toBeDefined()
-    expect(tsCheck!.status).toBe("not installed")
+    expect(tsCheck?.status).toBe("not installed")
   })
 })
