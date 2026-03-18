@@ -23,6 +23,8 @@ export interface ServerAuditContext {
   fail2banActive: boolean
   sshKeysInfo: string
   detectedServices: string[]
+  tailscaleActive?: boolean
+  tailscaleHostname?: string | null
 }
 
 export interface HardeningOptions {
@@ -50,6 +52,8 @@ export interface HardeningOptions {
   fixFilePermissions: boolean
   currentSshPort: number
   connectionUsername: string
+  installTailscale: boolean
+  tailscaleOptions?: TailscaleOptions
 }
 
 export interface UfwPort {
@@ -64,6 +68,15 @@ export interface SysctlOptions {
   disableSourceRouting: boolean
   synFloodProtection: boolean
   disableIcmpBroadcast: boolean
+}
+
+export interface TailscaleOptions {
+  hostname: string
+  authKey: string
+  acceptRoutes: boolean
+  advertiseExitNode: boolean
+  configureUfw: boolean
+  nfsSourceIp: string | null
 }
 
 export interface AuditCheck {

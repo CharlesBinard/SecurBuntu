@@ -42,6 +42,7 @@ const defaultOptions: HardeningOptions = {
   fixFilePermissions: false,
   currentSshPort: 22,
   connectionUsername: "root",
+  installTailscale: false,
 }
 
 const defaultServer: ServerInfo = {
