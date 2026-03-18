@@ -21,7 +21,7 @@ export function buildSshArgs(config: ConnectionConfig, platform: HostPlatform): 
   args.push("-o", "StrictHostKeyChecking=yes", "-o", "ConnectTimeout=10", "-p", String(config.port))
 
   if (config.authMethod === "key" && config.privateKeyPath) {
-    args.push("-i", config.privateKeyPath)
+    args.push("-i", config.privateKeyPath, "-o", "PreferredAuthentications=publickey")
   }
 
   return args
