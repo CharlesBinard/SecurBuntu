@@ -137,7 +137,7 @@ describe("buildSshArgs", () => {
     expect(args[portIdx + 1]).toBe("2222")
   })
 
-  test("includes -i flag for key-based auth", () => {
+  test("includes -i flag and PreferredAuthentications=publickey for key-based auth", () => {
     const config: ConnectionConfig = {
       ...baseConfig,
       authMethod: "key",
@@ -146,11 +146,14 @@ describe("buildSshArgs", () => {
     const args = buildSshArgs(config, linuxPlatform)
     expect(args).toContain("-i")
     expect(args).toContain("/home/user/.ssh/id_ed25519")
+    expect(args).toContain("PreferredAuthentications=publickey")
   })
 
-  test("does not include -i flag for password auth", () => {
+  test("does not include -i flag or PreferredAuthentications for password auth", () => {
     const args = buildSshArgs(baseConfig, linuxPlatform)
     expect(args).not.toContain("-i")
+    const hasPrefAuth = args.some((a) => a.startsWith("PreferredAuthentications="))
+    expect(hasPrefAuth).toBe(false)
   })
 
   test("does not include -i when authMethod is key but no privateKeyPath", () => {

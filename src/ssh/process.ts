@@ -16,15 +16,32 @@ export async function spawnProcess(
   })
 
   let timedOut = false
+  let interrupted = false
+
   const timer = setTimeout(() => {
     timedOut = true
     proc.kill()
   }, timeout)
 
+  const handleSignal = () => {
+    interrupted = true
+    proc.kill()
+  }
+  process.on("SIGINT", handleSignal)
+  process.on("SIGTERM", handleSignal)
+
   try {
     const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()])
 
     const exitCode = await proc.exited
+
+    if (interrupted) {
+      return {
+        stdout: "",
+        stderr: "Connection interrupted",
+        exitCode: -1,
+      }
+    }
 
     if (timedOut) {
       return {
@@ -37,6 +54,8 @@ export async function spawnProcess(
     return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode }
   } finally {
     clearTimeout(timer)
+    process.removeListener("SIGINT", handleSignal)
+    process.removeListener("SIGTERM", handleSignal)
   }
 }
 
