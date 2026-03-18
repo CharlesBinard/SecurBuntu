@@ -1,5 +1,5 @@
 import * as p from "@clack/prompts"
-import { existsSync, readFileSync } from "fs"
+import { existsSync, readFileSync, statSync } from "fs"
 import pc from "picocolors"
 import { resolveHome } from "../platform/home.ts"
 import { detectDefaultPubKeyPath } from "../ssh/index.ts"
@@ -70,6 +70,7 @@ async function promptPersonalKey(options: HardeningOptions, mode: "local" | "ssh
         if (!value?.trim()) return "Path is required"
         const resolved = value.replace("~", resolveHome())
         if (!existsSync(resolved)) return `File not found: ${resolved}`
+        if (statSync(resolved).isDirectory()) return "Path is a directory, not a file"
         const content = readFileSync(resolved, "utf-8").trim()
         if (!content.startsWith("ssh-")) return "Invalid public key format (must start with ssh-)"
         return undefined
