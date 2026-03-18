@@ -34,6 +34,7 @@ function buildSummaryLines(options: HardeningOptions): string[] {
   lines.push(`  X11 forwarding: ${options.disableX11Forwarding ? pc.green("disabled") : pc.dim("enabled")}`)
   lines.push(`  Max auth tries: ${pc.cyan(String(options.maxAuthTries))}`)
   lines.push(`  UFW: ${formatUfwSummary(options)}`)
+  lines.push(`  Tailscale: ${formatTailscaleSummary(options)}`)
   lines.push(`  Fail2ban: ${yesNo(options.installFail2ban)}`)
   lines.push(`  Auto-updates: ${yesNo(options.enableAutoUpdates)}`)
   lines.push(`  Kernel hardening: ${formatSysctlSummary(options)}`)
@@ -47,6 +48,11 @@ function formatUfwSummary(options: HardeningOptions): string {
   if (!options.installUfw) return pc.dim("No")
   const ports = options.ufwPorts.map((ufw) => ufw.port).join(", ")
   return `${pc.green("Yes")} (ports: ${pc.cyan(ports)})`
+}
+
+function formatTailscaleSummary(options: HardeningOptions): string {
+  if (!(options.installTailscale && options.tailscaleOptions)) return pc.dim("No")
+  return `${pc.green("Yes")} (hostname: ${pc.cyan(options.tailscaleOptions.hostname)})`
 }
 
 function formatSysctlSummary(options: HardeningOptions): string {
