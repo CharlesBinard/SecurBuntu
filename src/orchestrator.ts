@@ -215,12 +215,20 @@ export async function run(args: RunArgs, connection: ConnectionResult): Promise<
     const servicesCheck = auditResult.checks.find((c) => c.name === "Unnecessary Services")
     const detectedServices = servicesCheck?.detail?.split(", ") ?? []
 
+    const tsCheck = auditResult.checks.find((c) => c.name === "Tailscale")
+    const tailscaleActive = tsCheck?.status === "active"
+    const tailscaleHostname = tailscaleActive && tsCheck?.detail
+      ? tsCheck.detail.replace("hostname: ", "")
+      : null
+
     const auditContext: ServerAuditContext = {
       currentSshPort,
       ufwActive,
       fail2banActive,
       sshKeysInfo,
       detectedServices,
+      tailscaleActive,
+      tailscaleHostname,
     }
 
     const options = await promptHardeningOptions(serverInfo, client, auditContext, mode, username)

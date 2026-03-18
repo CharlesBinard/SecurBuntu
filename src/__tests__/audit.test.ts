@@ -24,7 +24,7 @@ describe("runAudit", () => {
   test("returns exactly 10 checks", async () => {
     const ssh = new MockSystemClient()
     const result = await runAudit(ssh)
-    expect(result.checks).toHaveLength(12)
+    expect(result.checks).toHaveLength(13)
   })
 
   test("check names match expected list", async () => {
@@ -37,6 +37,7 @@ describe("runAudit", () => {
       "Password Auth",
       "UFW Firewall",
       "Fail2ban",
+      "Tailscale",
       "Auto-updates",
       "Sudo Users",
       "SSH Keys",

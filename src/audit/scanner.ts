@@ -34,6 +34,20 @@ export async function runAudit(client: SystemClient): Promise<AuditResult> {
   const f2bResult = await client.exec("systemctl is-active fail2ban 2>/dev/null || echo 'not installed'")
   checks.push({ name: "Fail2ban", status: f2bResult.stdout.trim() })
 
+  // Tailscale
+  const tsResult = await client.exec("tailscale status --json 2>/dev/null")
+  if (tsResult.exitCode === 0) {
+    try {
+      const tsStatus = JSON.parse(tsResult.stdout)
+      const hostname = tsStatus?.Self?.HostName ?? "unknown"
+      checks.push({ name: "Tailscale", status: "active", detail: `hostname: ${hostname}` })
+    } catch {
+      checks.push({ name: "Tailscale", status: "active", detail: "could not parse status" })
+    }
+  } else {
+    checks.push({ name: "Tailscale", status: "not installed" })
+  }
+
   // Auto-updates
   const autoResult = await client.exec(
     "test -f /etc/apt/apt.conf.d/20auto-upgrades && grep -q 'Unattended-Upgrade \"1\"' /etc/apt/apt.conf.d/20auto-upgrades && echo enabled || echo 'not configured'",
