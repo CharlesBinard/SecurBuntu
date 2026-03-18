@@ -5,7 +5,7 @@ async function enableIpForwarding(client: SystemClient): Promise<boolean> {
   const v6 = await client.exec("sysctl -w net.ipv6.conf.all.forwarding=1")
 
   await client.writeFile(
-    "/etc/sysctl.d/99-tailscale-forwarding.conf",
+    "/etc/sysctl.d/99-zz-tailscale-forwarding.conf",
     "net.ipv4.ip_forward=1\nnet.ipv6.conf.all.forwarding=1\n",
   )
 
@@ -62,7 +62,14 @@ export const runConfigureTailscale: HardeningTask = async (client, options) => {
   }
 
   if (advertiseExitNode) {
-    await enableIpForwarding(client)
+    const forwardingOk = await enableIpForwarding(client)
+    if (!forwardingOk) {
+      return {
+        name: "Tailscale",
+        success: false,
+        message: "Failed to enable IP forwarding for exit node",
+      }
+    }
   }
 
   const upArgs = [
