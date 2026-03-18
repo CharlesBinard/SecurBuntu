@@ -7,6 +7,7 @@ import { runDisableServices } from "./services.ts"
 import { runHardenSshConfig } from "./ssh-config.ts"
 import { runInjectSshKeys } from "./ssh-keys.ts"
 import { runConfigureSysctl } from "./sysctl.ts"
+import { runConfigureTailscale } from "./tailscale.ts"
 import { runConfigureUfw } from "./ufw.ts"
 import { runConfigureUnattended } from "./unattended.ts"
 import { runCreateUser } from "./user.ts"
@@ -21,6 +22,7 @@ const TASKS: TaskEntry[] = [
   { label: "Creating sudo user", run: runCreateUser },
   { label: "Injecting SSH keys", run: runInjectSshKeys },
   { label: "Configuring UFW firewall", run: runConfigureUfw },
+  { label: "Configuring Tailscale VPN", run: runConfigureTailscale },
   { label: "Configuring Fail2ban", run: runConfigureFail2ban },
   { label: "Configuring automatic updates", run: runConfigureUnattended },
   { label: "Disabling unnecessary services", run: runDisableServices },
