@@ -17,14 +17,15 @@ export async function promptSysctlOptions(options: HardeningOptions): Promise<vo
 
   const sysctlChoices: { value: string; label: string; hint?: string }[] = []
 
-  if (!options.configureCoolify) {
+  if (!options.configureCoolify && !options.tailscaleOptions?.advertiseExitNode) {
     sysctlChoices.push({
       value: "blockForwarding",
       label: "Block traffic forwarding",
       hint: "recommended — prevents routing; disable if using Docker",
     })
   } else {
-    p.log.info(pc.dim("IP forwarding is required for Docker/Coolify — this option has been removed."))
+    const reason = options.configureCoolify ? "Docker/Coolify" : "Tailscale exit node"
+    p.log.info(pc.dim(`IP forwarding is required for ${reason} — this option has been removed.`))
   }
 
   sysctlChoices.push(

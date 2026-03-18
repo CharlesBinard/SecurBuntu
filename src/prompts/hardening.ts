@@ -8,6 +8,7 @@ import { unwrapBoolean, unwrapText } from "./helpers.ts"
 import { promptServiceOptions } from "./services.ts"
 import { promptSshOptions } from "./ssh-options.ts"
 import { promptSysctlOptions } from "./sysctl.ts"
+import { promptTailscaleOptions } from "./tailscale.ts"
 import { promptUfwOptions } from "./ufw.ts"
 
 async function promptSudoUser(server: ServerInfo, options: HardeningOptions): Promise<void> {
@@ -151,6 +152,7 @@ export async function promptHardeningOptions(
     disablePasswordAuth: false,
     disableX11Forwarding: true,
     maxAuthTries: 5,
+    installTailscale: false,
     installUfw: false,
     ufwPorts: [],
     installFail2ban: false,
@@ -200,6 +202,9 @@ export async function promptHardeningOptions(
 
   const sshPort = options.changeSshPort && options.newSshPort ? options.newSshPort : auditContext.currentSshPort
   await promptUfwOptions(options, sshPort, auditContext.ufwActive)
+
+  // Tailscale
+  await promptTailscaleOptions(options, auditContext.tailscaleActive ?? false, auditContext.tailscaleHostname ?? null)
 
   // Fail2ban
   const fail2banMessage = auditContext.fail2banActive
