@@ -42,7 +42,7 @@ describe("savePreset", () => {
   })
 
   test("saves preset as JSON file", () => {
-    const opts = presetToHardeningOptions(BUILT_IN_PRESETS["minimal"])
+    const opts = presetToHardeningOptions(BUILT_IN_PRESETS["minimal"]!)
     const path = savePreset("my-vps", opts, "Test preset", testDir)
     expect(existsSync(path)).toBe(true)
     const content = JSON.parse(readFileSync(path, "utf-8"))
@@ -53,13 +53,13 @@ describe("savePreset", () => {
 
   test("creates directory if it does not exist", () => {
     const dir = join(testDir, "nested", "presets")
-    const opts = presetToHardeningOptions(BUILT_IN_PRESETS["minimal"])
+    const opts = presetToHardeningOptions(BUILT_IN_PRESETS["minimal"]!)
     savePreset("test", opts, "Test", dir)
     expect(existsSync(dir)).toBe(true)
   })
 
   test("rejects built-in preset names", () => {
-    const opts = presetToHardeningOptions(BUILT_IN_PRESETS["minimal"])
+    const opts = presetToHardeningOptions(BUILT_IN_PRESETS["minimal"]!)
     expect(() => savePreset("minimal", opts, "Test", testDir)).toThrow("built-in")
     expect(() => savePreset("web-server", opts, "Test", testDir)).toThrow("built-in")
     expect(() => savePreset("database", opts, "Test", testDir)).toThrow("built-in")
@@ -67,7 +67,7 @@ describe("savePreset", () => {
   })
 
   test("sanitizes the name for the filename", () => {
-    const opts = presetToHardeningOptions(BUILT_IN_PRESETS["minimal"])
+    const opts = presetToHardeningOptions(BUILT_IN_PRESETS["minimal"]!)
     const path = savePreset("My VPS!", opts, "Test", testDir)
     expect(path).toContain("my-vps.json")
   })

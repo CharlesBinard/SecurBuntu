@@ -34,7 +34,7 @@ describe("BUILT_IN_PRESETS", () => {
   })
 
   test("minimal has UFW with SSH only", () => {
-    const m = BUILT_IN_PRESETS["minimal"]
+    const m = BUILT_IN_PRESETS["minimal"]!
     expect(m.options.installUfw).toBe(true)
     expect(m.options.ufwPorts).toEqual([])
     expect(m.options.installFail2ban).toBe(false)
@@ -42,7 +42,7 @@ describe("BUILT_IN_PRESETS", () => {
   })
 
   test("web-server has HTTP/HTTPS ports and Fail2ban", () => {
-    const ws = BUILT_IN_PRESETS["web-server"]
+    const ws = BUILT_IN_PRESETS["web-server"]!
     expect(ws.options.ufwPorts).toEqual([
       { port: "80", protocol: "tcp", comment: "HTTP" },
       { port: "443", protocol: "tcp", comment: "HTTPS" },
@@ -52,14 +52,14 @@ describe("BUILT_IN_PRESETS", () => {
   })
 
   test("database has kernel hardening and file permissions", () => {
-    const db = BUILT_IN_PRESETS["database"]
+    const db = BUILT_IN_PRESETS["database"]!
     expect(db.options.enableSysctl).toBe(true)
     expect(db.options.sysctlOptions).toBeTruthy()
     expect(db.options.fixFilePermissions).toBe(true)
   })
 
   test("fortress has everything enabled", () => {
-    const f = BUILT_IN_PRESETS["fortress"]
+    const f = BUILT_IN_PRESETS["fortress"]!
     expect(f.options.enableSysctl).toBe(true)
     expect(f.options.disableServices).toBe(true)
     expect(f.options.servicesToDisable.length).toBeGreaterThan(0)
