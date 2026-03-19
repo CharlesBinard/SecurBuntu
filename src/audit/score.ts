@@ -17,6 +17,8 @@ export function computeScore(checks: CheckResult[]): HealthCheckScore {
         failed++
         break
       // "info" is excluded from score
+      default:
+        break
     }
   }
 

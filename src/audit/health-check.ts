@@ -9,10 +9,8 @@ async function sshGrep(client: SystemClient, directive: string): Promise<string>
   return result.stdout.replace(`${directive} `, "").trim()
 }
 
-export async function runHealthCheck(client: SystemClient): Promise<CheckResult[]> {
+async function checkSsh(client: SystemClient): Promise<CheckResult[]> {
   const checks: CheckResult[] = []
-
-  // --- SSH Configuration ---
 
   const rootLogin = (await sshGrep(client, "PermitRootLogin")) || "yes"
   const rootLoginSecure = rootLogin === "no" || rootLogin === "prohibit-password"
@@ -63,7 +61,11 @@ export async function runHealthCheck(client: SystemClient): Promise<CheckResult[
     status: banner ? "pass" : "warn",
   })
 
-  // --- Firewall ---
+  return checks
+}
+
+async function checkFirewall(client: SystemClient): Promise<CheckResult[]> {
+  const checks: CheckResult[] = []
 
   const ufwResult = await client.exec("which ufw > /dev/null 2>&1 && ufw status | head -1 || echo 'not installed'")
   const ufwStatus = ufwResult.stdout.replace("Status: ", "").trim()
@@ -74,7 +76,12 @@ export async function runHealthCheck(client: SystemClient): Promise<CheckResult[
   } else if (ufwActive) {
     checks.push({ category: "Firewall", label: "UFW firewall active", status: "pass" })
   } else {
-    checks.push({ category: "Firewall", label: "UFW firewall active", status: "warn", detail: "installed but inactive" })
+    checks.push({
+      category: "Firewall",
+      label: "UFW firewall active",
+      status: "warn",
+      detail: "installed but inactive",
+    })
   }
 
   if (ufwActive) {
@@ -90,92 +97,115 @@ export async function runHealthCheck(client: SystemClient): Promise<CheckResult[
     checks.push({ category: "Firewall", label: "UFW rules configured", status: "warn", detail: "UFW not active" })
   }
 
-  // --- Fail2ban ---
+  return checks
+}
 
+async function checkFail2ban(client: SystemClient): Promise<CheckResult[]> {
   const f2bResult = await client.exec("systemctl is-active fail2ban 2>/dev/null || echo 'not installed'")
   const f2bStatus = f2bResult.stdout.trim()
 
   if (f2bStatus === "active") {
-    checks.push({ category: "Fail2ban", label: "Fail2ban active", status: "pass" })
-  } else if (f2bStatus === "not installed") {
-    checks.push({ category: "Fail2ban", label: "Fail2ban active", status: "fail", detail: "not installed" })
-  } else {
-    checks.push({ category: "Fail2ban", label: "Fail2ban active", status: "warn", detail: f2bStatus })
+    return [{ category: "Fail2ban", label: "Fail2ban active", status: "pass" }]
   }
+  if (f2bStatus === "not installed") {
+    return [{ category: "Fail2ban", label: "Fail2ban active", status: "fail", detail: "not installed" }]
+  }
+  return [{ category: "Fail2ban", label: "Fail2ban active", status: "warn", detail: f2bStatus }]
+}
 
-  // --- Users ---
-
+async function checkUsers(client: SystemClient): Promise<CheckResult[]> {
   const sudoResult = await client.exec("grep -Po '^sudo:.*:\\K.*' /etc/group 2>/dev/null || echo 'none'")
   const sudoUsers = sudoResult.stdout.trim()
   const hasSudoUser = sudoUsers !== "" && sudoUsers !== "none"
-  checks.push({
-    category: "Users",
-    label: "Non-root sudo user exists",
-    status: hasSudoUser ? "pass" : "warn",
-    detail: hasSudoUser ? sudoUsers : "root only",
-  })
+  return [
+    {
+      category: "Users",
+      label: "Non-root sudo user exists",
+      status: hasSudoUser ? "pass" : "warn",
+      detail: hasSudoUser ? sudoUsers : "root only",
+    },
+  ]
+}
 
-  // --- Updates ---
-
+async function checkUpdates(client: SystemClient): Promise<CheckResult[]> {
   const autoResult = await client.exec(
     "test -f /etc/apt/apt.conf.d/20auto-upgrades && grep -q 'Unattended-Upgrade \"1\"' /etc/apt/apt.conf.d/20auto-upgrades && echo enabled || echo 'not configured'",
   )
-  checks.push({
-    category: "Updates",
-    label: "Unattended-upgrades enabled",
-    status: autoResult.stdout.trim() === "enabled" ? "pass" : "fail",
-  })
+  return [
+    {
+      category: "Updates",
+      label: "Unattended-upgrades enabled",
+      status: autoResult.stdout.trim() === "enabled" ? "pass" : "fail",
+    },
+  ]
+}
 
-  // --- Services ---
-
+async function checkServices(client: SystemClient): Promise<CheckResult[]> {
   const servicesResult = await client.exec("systemctl list-units --type=service --state=active --no-legend")
   const activeServices = servicesResult.stdout
   const detectedServices = UNNECESSARY_SERVICES.filter((s) => activeServices.includes(`${s.name}.service`)).map(
     (s) => s.name,
   )
-  checks.push({
-    category: "Services",
-    label: "No unnecessary services",
-    status: detectedServices.length === 0 ? "pass" : "warn",
-    detail: detectedServices.length > 0 ? detectedServices.join(", ") : undefined,
-  })
+  return [
+    {
+      category: "Services",
+      label: "No unnecessary services",
+      status: detectedServices.length === 0 ? "pass" : "warn",
+      detail: detectedServices.length > 0 ? detectedServices.join(", ") : undefined,
+    },
+  ]
+}
 
-  // --- Permissions ---
-
+async function checkFilePermissions(client: SystemClient): Promise<CheckResult[]> {
   const violations = await checkPermissions(client)
-  checks.push({
-    category: "Permissions",
-    label: "File permissions correct",
-    status: violations.length === 0 ? "pass" : "fail",
-    detail:
-      violations.length > 0
-        ? violations.map((v) => `${v.path} ${v.actual.mode} (expected ${v.expected.mode})`).join(", ")
-        : undefined,
-  })
+  return [
+    {
+      category: "Permissions",
+      label: "File permissions correct",
+      status: violations.length === 0 ? "pass" : "fail",
+      detail:
+        violations.length > 0
+          ? violations.map((v) => `${v.path} ${v.actual.mode} (expected ${v.expected.mode})`).join(", ")
+          : undefined,
+    },
+  ]
+}
 
-  // --- Kernel ---
-
+async function checkKernel(client: SystemClient): Promise<CheckResult[]> {
   const sysctlResult = await client.exec("test -f /etc/sysctl.d/99-securbuntu.conf && echo hardened || echo default")
-  checks.push({
-    category: "Kernel",
-    label: "Sysctl hardening applied",
-    status: sysctlResult.stdout.trim() === "hardened" ? "pass" : "warn",
-  })
+  return [
+    {
+      category: "Kernel",
+      label: "Sysctl hardening applied",
+      status: sysctlResult.stdout.trim() === "hardened" ? "pass" : "warn",
+    },
+  ]
+}
 
-  // --- Network ---
-
+async function checkNetwork(client: SystemClient): Promise<CheckResult[]> {
   const tsResult = await client.exec("tailscale status --json 2>/dev/null")
   if (tsResult.exitCode === 0 && tsResult.stdout.trim() !== "") {
     try {
       const tsStatus = JSON.parse(tsResult.stdout)
       const hostname = tsStatus?.Self?.HostName ?? "unknown"
-      checks.push({ category: "Network", label: "Tailscale VPN", status: "info", detail: `active (${hostname})` })
+      return [{ category: "Network", label: "Tailscale VPN", status: "info", detail: `active (${hostname})` }]
     } catch {
-      checks.push({ category: "Network", label: "Tailscale VPN", status: "info", detail: "active" })
+      return [{ category: "Network", label: "Tailscale VPN", status: "info", detail: "active" }]
     }
-  } else {
-    checks.push({ category: "Network", label: "Tailscale VPN", status: "info", detail: "not installed" })
   }
+  return [{ category: "Network", label: "Tailscale VPN", status: "info", detail: "not installed" }]
+}
 
-  return checks
+export async function runHealthCheck(client: SystemClient): Promise<CheckResult[]> {
+  return [
+    ...(await checkSsh(client)),
+    ...(await checkFirewall(client)),
+    ...(await checkFail2ban(client)),
+    ...(await checkUsers(client)),
+    ...(await checkUpdates(client)),
+    ...(await checkServices(client)),
+    ...(await checkFilePermissions(client)),
+    ...(await checkKernel(client)),
+    ...(await checkNetwork(client)),
+  ]
 }
