@@ -1,9 +1,10 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test"
-import { loadPreset, validatePreset, isFilePath } from "../presets/loader.ts"
-import { BUILT_IN_PRESETS } from "../presets/built-in.ts"
+import { describe, expect, test } from "bun:test"
 import { mkdirSync, rmSync, writeFileSync } from "fs"
-import { join } from "path"
 import { tmpdir } from "os"
+import { join } from "path"
+import { BUILT_IN_PRESETS } from "../presets/built-in.ts"
+import { isFilePath, loadPreset, validatePreset } from "../presets/loader.ts"
+import type { Preset } from "../types.ts"
 
 describe("isFilePath", () => {
   test("returns true for paths with /", () => {
@@ -23,40 +24,40 @@ describe("isFilePath", () => {
 
 describe("validatePreset", () => {
   test("accepts valid preset", () => {
-    const preset = BUILT_IN_PRESETS["minimal"]!
+    const preset = BUILT_IN_PRESETS.minimal as Preset
     expect(() => validatePreset(preset)).not.toThrow()
   })
 
   test("rejects missing name", () => {
     const bad = { version: 1, options: {} }
-    expect(() => validatePreset(bad as any)).toThrow("name")
+    expect(() => validatePreset(bad)).toThrow("name")
   })
 
   test("rejects wrong version", () => {
-    const bad = { name: "test", description: "t", version: 2, options: BUILT_IN_PRESETS["minimal"]!.options }
-    expect(() => validatePreset(bad as any)).toThrow("version")
+    const bad = { name: "test", description: "t", version: 2, options: (BUILT_IN_PRESETS.minimal as Preset).options }
+    expect(() => validatePreset(bad)).toThrow("version")
   })
 
   test("rejects missing options field", () => {
     const bad = { name: "test", description: "t", version: 1 }
-    expect(() => validatePreset(bad as any)).toThrow("options")
+    expect(() => validatePreset(bad)).toThrow("options")
   })
 
   test("rejects missing required option field", () => {
     const bad = { name: "test", description: "t", version: 1, options: { changeSshPort: true } }
-    expect(() => validatePreset(bad as any)).toThrow()
+    expect(() => validatePreset(bad)).toThrow()
   })
 
   test("rejects invalid permitRootLogin value", () => {
-    const opts = { ...BUILT_IN_PRESETS["minimal"]!.options, permitRootLogin: "invalid" }
+    const opts = { ...(BUILT_IN_PRESETS.minimal as Preset).options, permitRootLogin: "invalid" }
     const bad = { name: "test", description: "t", version: 1, options: opts }
-    expect(() => validatePreset(bad as any)).toThrow("permitRootLogin")
+    expect(() => validatePreset(bad)).toThrow("permitRootLogin")
   })
 
   test("rejects changeSshPort true without newSshPort", () => {
-    const opts = { ...BUILT_IN_PRESETS["minimal"]!.options, changeSshPort: true, newSshPort: undefined }
+    const opts = { ...(BUILT_IN_PRESETS.minimal as Preset).options, changeSshPort: true, newSshPort: undefined }
     const bad = { name: "test", description: "t", version: 1, options: opts }
-    expect(() => validatePreset(bad as any)).toThrow("newSshPort")
+    expect(() => validatePreset(bad)).toThrow("newSshPort")
   })
 })
 
@@ -78,10 +79,10 @@ describe("loadPreset", () => {
   })
 
   test("loads preset from file path", async () => {
-    const dir = join(tmpdir(), "securbuntu-test-" + Date.now())
+    const dir = join(tmpdir(), `securbuntu-test-${Date.now()}`)
     mkdirSync(dir, { recursive: true })
     const filePath = join(dir, "test-preset.json")
-    writeFileSync(filePath, JSON.stringify(BUILT_IN_PRESETS["minimal"]!))
+    writeFileSync(filePath, JSON.stringify(BUILT_IN_PRESETS.minimal as Preset))
     try {
       const preset = await loadPreset(filePath)
       expect(preset.name).toBe("minimal")
@@ -91,7 +92,7 @@ describe("loadPreset", () => {
   })
 
   test("throws for invalid JSON file", async () => {
-    const dir = join(tmpdir(), "securbuntu-test-" + Date.now())
+    const dir = join(tmpdir(), `securbuntu-test-${Date.now()}`)
     mkdirSync(dir, { recursive: true })
     const filePath = join(dir, "bad.json")
     writeFileSync(filePath, "not json{{{")
@@ -112,15 +113,15 @@ describe("listCustomPresetsFromDir", () => {
 
   test("lists valid JSON presets from directory", async () => {
     const { listCustomPresetsFromDir } = await import("../presets/loader.ts")
-    const dir = join(tmpdir(), "securbuntu-list-test-" + Date.now())
+    const dir = join(tmpdir(), `securbuntu-list-test-${Date.now()}`)
     mkdirSync(dir, { recursive: true })
-    writeFileSync(join(dir, "my-preset.json"), JSON.stringify(BUILT_IN_PRESETS["minimal"]!))
+    writeFileSync(join(dir, "my-preset.json"), JSON.stringify(BUILT_IN_PRESETS.minimal as Preset))
     writeFileSync(join(dir, ".DS_Store"), "junk")
     writeFileSync(join(dir, "bad.json"), "not json")
     try {
       const presets = await listCustomPresetsFromDir(dir)
       expect(presets).toHaveLength(1)
-      expect(presets[0]!.name).toBe("minimal")
+      expect((presets[0] as Preset).name).toBe("minimal")
     } finally {
       rmSync(dir, { recursive: true })
     }

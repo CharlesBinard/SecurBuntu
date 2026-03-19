@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
-import { presetToHardeningOptions } from "../presets/converter.ts"
 import { BUILT_IN_PRESETS } from "../presets/built-in.ts"
-import type { HardeningOptions } from "../types.ts"
+import { presetToHardeningOptions } from "../presets/converter.ts"
+import type { HardeningOptions, Preset } from "../types.ts"
 
 describe("presetToHardeningOptions", () => {
   test("sets excluded fields to defaults", () => {
-    const preset = BUILT_IN_PRESETS["minimal"]!
+    const preset = BUILT_IN_PRESETS.minimal as Preset
     const opts = presetToHardeningOptions(preset)
     expect(opts.createSudoUser).toBe(false)
     expect(opts.sudoUsername).toBeUndefined()
@@ -18,7 +18,7 @@ describe("presetToHardeningOptions", () => {
   })
 
   test("copies all preset options", () => {
-    const preset = BUILT_IN_PRESETS["web-server"]!
+    const preset = BUILT_IN_PRESETS["web-server"] as Preset
     const opts = presetToHardeningOptions(preset)
     expect(opts.changeSshPort).toBe(true)
     expect(opts.newSshPort).toBe(2222)
@@ -31,7 +31,7 @@ describe("presetToHardeningOptions", () => {
   })
 
   test("preserves sysctlOptions when present", () => {
-    const preset = BUILT_IN_PRESETS["fortress"]!
+    const preset = BUILT_IN_PRESETS.fortress as Preset
     const opts = presetToHardeningOptions(preset)
     expect(opts.enableSysctl).toBe(true)
     expect(opts.sysctlOptions).toBeTruthy()
@@ -39,14 +39,14 @@ describe("presetToHardeningOptions", () => {
   })
 
   test("leaves sysctlOptions undefined when not in preset", () => {
-    const preset = BUILT_IN_PRESETS["minimal"]!
+    const preset = BUILT_IN_PRESETS.minimal as Preset
     const opts = presetToHardeningOptions(preset)
     expect(opts.enableSysctl).toBe(false)
     expect(opts.sysctlOptions).toBeUndefined()
   })
 
   test("result is a valid HardeningOptions", () => {
-    const preset = BUILT_IN_PRESETS["fortress"]!
+    const preset = BUILT_IN_PRESETS.fortress as Preset
     const opts: HardeningOptions = presetToHardeningOptions(preset)
     expect(opts).toBeTruthy()
   })
