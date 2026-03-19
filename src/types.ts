@@ -89,6 +89,22 @@ export interface AuditResult {
   checks: AuditCheck[]
 }
 
+export type CheckStatus = "pass" | "warn" | "fail" | "info"
+
+export interface CheckResult {
+  category: string
+  label: string
+  status: CheckStatus
+  detail?: string
+}
+
+export interface HealthCheckScore {
+  passed: number
+  warned: number
+  failed: number
+  total: number
+}
+
 export interface TaskResult {
   name: string
   success: boolean
