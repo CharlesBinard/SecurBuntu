@@ -50,10 +50,14 @@ function formatOsLabel(platform: HostPlatform): string {
   return platform.os
 }
 
-export async function selectMode(platform: HostPlatform): Promise<ConnectionResult> {
+export async function selectMode(
+  platform: HostPlatform,
+  appMode: "harden" | "audit" = "harden",
+): Promise<ConnectionResult> {
   while (true) {
+    const promptText = appMode === "audit" ? "What would you like to audit?" : "What would you like to secure?"
     const mode = await p.select({
-      message: "What would you like to secure?",
+      message: promptText,
       options: [
         { value: "local" as const, label: "This machine", hint: "run directly, no SSH" },
         { value: "ssh" as const, label: "A remote server", hint: "connect via SSH" },
