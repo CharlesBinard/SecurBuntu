@@ -6,7 +6,9 @@ import { initVersion, parseArgs, showBanner } from "./cli/index.ts"
 import { selectMode } from "./connection/index.ts"
 import { run } from "./orchestrator.ts"
 import { detectHostPlatform } from "./platform/index.ts"
+import { BUILT_IN_PRESETS, listCustomPresets, loadPreset, presetToHardeningOptions } from "./presets/index.ts"
 import { detectServerInfo } from "./ssh/index.ts"
+import type { HardeningOptions, Preset } from "./types.ts"
 
 async function promptAppMode(): Promise<"harden" | "audit"> {
   const mode = await p.select({
@@ -23,6 +25,49 @@ async function promptAppMode(): Promise<"harden" | "audit"> {
   }
 
   return mode
+}
+
+async function promptPresetOrCustom(): Promise<Preset | null> {
+  const configMode = await p.select({
+    message: "How would you like to configure hardening?",
+    options: [
+      { value: "preset" as const, label: "Use a preset", hint: "pre-configured profile" },
+      { value: "custom" as const, label: "Custom", hint: "interactive questionnaire" },
+    ],
+  })
+
+  if (p.isCancel(configMode)) {
+    p.outro(pc.dim("Cancelled."))
+    process.exit(0)
+  }
+
+  if (configMode === "custom") return null
+
+  // Build preset list: built-in first, then custom
+  const builtInOptions = Object.values(BUILT_IN_PRESETS).map((preset) => ({
+    value: preset.name,
+    label: preset.name,
+    hint: preset.description,
+  }))
+
+  const customPresets = await listCustomPresets()
+  const customOptions = customPresets.map((preset) => ({
+    value: preset.name,
+    label: `${preset.name} ${pc.dim("(custom)")}`,
+    hint: preset.description,
+  }))
+
+  const selected = await p.select({
+    message: "Choose a preset:",
+    options: [...builtInOptions, ...customOptions],
+  })
+
+  if (p.isCancel(selected)) {
+    p.outro(pc.dim("Cancelled."))
+    process.exit(0)
+  }
+
+  return loadPreset(selected)
 }
 
 async function runAuditMode(connection: Awaited<ReturnType<typeof selectMode>>): Promise<void> {
@@ -56,16 +101,44 @@ async function main(): Promise<void> {
   if (!args) return
   showBanner()
 
-  const appMode: "harden" | "audit" = args.isAuditOnly ? "audit" : await promptAppMode()
+  // Determine app mode and load preset if specified via flag
+  let appMode: "harden" | "audit"
+  let flagPreset: Preset | undefined
+
+  if (args.presetName) {
+    appMode = "harden"
+    flagPreset = await loadPreset(args.presetName)
+    p.log.info(`Using preset: ${pc.cyan(flagPreset.name)} — ${flagPreset.description}`)
+  } else if (args.isAuditOnly) {
+    appMode = "audit"
+  } else {
+    appMode = await promptAppMode()
+  }
 
   const platform = await detectHostPlatform()
   const connection = await selectMode(platform, appMode)
 
   if (appMode === "audit") {
     await runAuditMode(connection)
-  } else {
-    await run(args, connection)
+    return
   }
+
+  // Harden mode: resolve preset (from flag or interactive selection)
+  let presetOptions: HardeningOptions | undefined
+
+  if (flagPreset) {
+    // Preset already loaded from --preset flag
+    presetOptions = presetToHardeningOptions(flagPreset)
+  } else {
+    // Interactive: ask preset or custom
+    const selectedPreset = await promptPresetOrCustom()
+    if (selectedPreset) {
+      presetOptions = presetToHardeningOptions(selectedPreset)
+    }
+    // If null, proceed with custom flow (presetOptions stays undefined)
+  }
+
+  await run(args, connection, presetOptions)
 }
 
 main().catch((error) => {
