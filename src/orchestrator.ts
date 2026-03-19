@@ -5,12 +5,11 @@ import { DryRunClient } from "./dry-run.ts"
 import { LoggingClient } from "./logging.ts"
 import {
   promptConfirmation,
-  promptExportAudit,
   promptExportLog,
   promptExportReport,
   promptHardeningOptions,
 } from "./prompts/index.ts"
-import { displayReport, exportAuditMarkdown, exportReportMarkdown } from "./report/index.ts"
+import { displayReport, exportReportMarkdown } from "./report/index.ts"
 import { detectServerInfo } from "./ssh/index.ts"
 import { executeTasks } from "./tasks/index.ts"
 import type {
@@ -26,7 +25,6 @@ import type {
 interface RunArgs {
   isDryRun: boolean
   wantLog: boolean
-  isAuditOnly: boolean
 }
 
 async function detectAndAudit(
@@ -47,17 +45,6 @@ async function detectAndAudit(
   displayAudit(auditResult)
 
   return { serverInfo, auditResult }
-}
-
-async function handleAuditOnlyMode(client: SystemClient, auditResult: AuditResult, host: string): Promise<void> {
-  const wantExport = await promptExportAudit()
-  if (wantExport) {
-    const date = new Date().toISOString().split("T")[0] ?? ""
-    const filename = exportAuditMarkdown(auditResult, host, date)
-    log.success(`Audit report saved to ${pc.cyan(filename)}`)
-  }
-  outro(pc.green("Audit complete."))
-  client.close()
 }
 
 async function runSystemUpdate(
@@ -184,18 +171,13 @@ async function executeAndReport(
 }
 
 export async function run(args: RunArgs, connection: ConnectionResult): Promise<void> {
-  const { isDryRun, wantLog, isAuditOnly } = args
+  const { isDryRun, wantLog } = args
   const { client, host, username, mode } = connection
 
   const s = spinner()
 
   try {
     const { serverInfo, auditResult } = await detectAndAudit(client, s)
-
-    if (isAuditOnly) {
-      await handleAuditOnlyMode(client, auditResult, host)
-      return
-    }
 
     const { updateSuccess, updateMessage } = await runSystemUpdate(client, isDryRun, s)
 
