@@ -1,5 +1,6 @@
-import { confirm, isCancel, log, outro, spinner } from "@clack/prompts"
+import { confirm, isCancel, log, outro, spinner, text } from "@clack/prompts"
 import pc from "picocolors"
+import { savePreset } from "./presets/index.ts"
 import { displayAudit, runAudit } from "./audit/index.ts"
 import { DryRunClient } from "./dry-run.ts"
 import { LoggingClient } from "./logging.ts"
@@ -165,7 +166,7 @@ async function executeAndReport(
   outro(pc.green(pc.bold("Server hardening complete!")))
 }
 
-export async function run(args: RunArgs, connection: ConnectionResult): Promise<void> {
+export async function run(args: RunArgs, connection: ConnectionResult, presetOptions?: HardeningOptions): Promise<void> {
   const { isDryRun, wantLog } = args
   const { client, host, username, mode } = connection
 
@@ -206,7 +207,27 @@ export async function run(args: RunArgs, connection: ConnectionResult): Promise<
       tailscaleHostname,
     }
 
-    const options = await promptHardeningOptions(serverInfo, client, auditContext, mode, username)
+    let options: HardeningOptions
+    if (presetOptions) {
+      // Fill in runtime fields that the converter left as placeholders
+      options = { ...presetOptions, currentSshPort, connectionUsername: username }
+    } else {
+      options = await promptHardeningOptions(serverInfo, client, auditContext, mode, username)
+
+      // Offer to save as preset
+      const wantSave = await confirm({ message: "Save these options as a preset for future use?" })
+      if (!isCancel(wantSave) && wantSave) {
+        const presetNameResult = await text({ message: "Preset name:", placeholder: "my-server" })
+        if (!isCancel(presetNameResult) && presetNameResult) {
+          try {
+            const path = savePreset(presetNameResult, options, `Custom preset: ${presetNameResult}`)
+            log.success(`Preset saved to ${pc.cyan(path)}`)
+          } catch (err) {
+            log.warning(`Could not save preset: ${err instanceof Error ? err.message : err}`)
+          }
+        }
+      }
+    }
 
     const confirmation = await promptConfirmation(host, options)
     if (!confirmation) {
