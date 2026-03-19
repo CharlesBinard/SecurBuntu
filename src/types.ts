@@ -79,6 +79,34 @@ export interface TailscaleOptions {
   nfsSourceIp: string | null
 }
 
+export interface PresetOptions {
+  changeSshPort: boolean
+  newSshPort?: number
+  permitRootLogin: "no" | "prohibit-password" | "yes"
+  disablePasswordAuth: boolean
+  disableX11Forwarding: boolean
+  maxAuthTries: number
+  enableSshBanner: boolean
+  installUfw: boolean
+  ufwPorts: UfwPort[]
+  installFail2ban: boolean
+  enableAutoUpdates: boolean
+  enableSysctl: boolean
+  sysctlOptions?: SysctlOptions
+  disableServices: boolean
+  servicesToDisable: string[]
+  fixFilePermissions: boolean
+  installTailscale: boolean
+  tailscaleOptions?: TailscaleOptions
+}
+
+export interface Preset {
+  name: string
+  description: string
+  version: number
+  options: PresetOptions
+}
+
 export interface AuditCheck {
   name: string
   status: string
