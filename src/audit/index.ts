@@ -1,5 +1,5 @@
 export { displayAudit } from "./display.ts"
-export { runAudit } from "./scanner.ts"
 export { runHealthCheck } from "./health-check.ts"
-export { computeScore, getExitCode } from "./score.ts"
 export { displayHealthCheck, formatHealthCheck } from "./health-display.ts"
+export { runAudit } from "./scanner.ts"
+export { computeScore, getExitCode } from "./score.ts"

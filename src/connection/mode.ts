@@ -50,7 +50,10 @@ function formatOsLabel(platform: HostPlatform): string {
   return platform.os
 }
 
-export async function selectMode(platform: HostPlatform, appMode: "harden" | "audit" = "harden"): Promise<ConnectionResult> {
+export async function selectMode(
+  platform: HostPlatform,
+  appMode: "harden" | "audit" = "harden",
+): Promise<ConnectionResult> {
   while (true) {
     const promptText = appMode === "audit" ? "What would you like to audit?" : "What would you like to secure?"
     const mode = await p.select({

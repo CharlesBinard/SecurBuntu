@@ -1,13 +1,21 @@
-import { describe, expect, mock as bunMock, test, beforeEach } from "bun:test"
+import { beforeEach, mock as bunMock, describe, expect, test } from "bun:test"
 
 let logCalls: string[] = []
 
 bunMock.module("@clack/prompts", () => ({
   log: {
-    info: (msg: string) => { logCalls.push(msg) },
-    success: (msg: string) => { logCalls.push(msg) },
-    warning: (msg: string) => { logCalls.push(msg) },
-    error: (msg: string) => { logCalls.push(msg) },
+    info: (msg: string) => {
+      logCalls.push(msg)
+    },
+    success: (msg: string) => {
+      logCalls.push(msg)
+    },
+    warning: (msg: string) => {
+      logCalls.push(msg)
+    },
+    error: (msg: string) => {
+      logCalls.push(msg)
+    },
   },
 }))
 
@@ -40,9 +48,7 @@ describe("formatHealthCheck", () => {
   })
 
   test("includes server info header", () => {
-    const checks: CheckResult[] = [
-      { category: "SSH Configuration", label: "Root login", status: "pass" },
-    ]
+    const checks: CheckResult[] = [{ category: "SSH Configuration", label: "Root login", status: "pass" }]
     const score: HealthCheckScore = { passed: 1, warned: 0, failed: 0, total: 1 }
     const serverInfo: ServerInfo = {
       ubuntuVersion: "24.04",
@@ -96,9 +102,7 @@ describe("formatHealthCheck", () => {
   })
 
   test("includes detail when present", () => {
-    const checks: CheckResult[] = [
-      { category: "A", label: "Check", status: "warn", detail: "some detail" },
-    ]
+    const checks: CheckResult[] = [{ category: "A", label: "Check", status: "warn", detail: "some detail" }]
     const score: HealthCheckScore = { passed: 0, warned: 1, failed: 0, total: 1 }
     const serverInfo: ServerInfo = {
       ubuntuVersion: "22.04",

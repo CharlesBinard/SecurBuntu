@@ -3,12 +3,7 @@ import pc from "picocolors"
 import { displayAudit, runAudit } from "./audit/index.ts"
 import { DryRunClient } from "./dry-run.ts"
 import { LoggingClient } from "./logging.ts"
-import {
-  promptConfirmation,
-  promptExportLog,
-  promptExportReport,
-  promptHardeningOptions,
-} from "./prompts/index.ts"
+import { promptConfirmation, promptExportLog, promptExportReport, promptHardeningOptions } from "./prompts/index.ts"
 import { displayReport, exportReportMarkdown } from "./report/index.ts"
 import { detectServerInfo } from "./ssh/index.ts"
 import { executeTasks } from "./tasks/index.ts"

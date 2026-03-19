@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { MockSystemClient } from "./helpers/mock-ssh.ts"
 import { runHealthCheck } from "../audit/health-check.ts"
+import { MockSystemClient } from "./helpers/mock-ssh.ts"
 
 describe("runHealthCheck", () => {
   test("returns 15 checks total", async () => {
