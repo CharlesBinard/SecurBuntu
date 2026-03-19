@@ -1,9 +1,9 @@
 import { confirm, isCancel, log, outro, spinner, text } from "@clack/prompts"
 import pc from "picocolors"
-import { savePreset } from "./presets/index.ts"
 import { displayAudit, runAudit } from "./audit/index.ts"
 import { DryRunClient } from "./dry-run.ts"
 import { LoggingClient } from "./logging.ts"
+import { savePreset } from "./presets/index.ts"
 import { promptConfirmation, promptExportLog, promptExportReport, promptHardeningOptions } from "./prompts/index.ts"
 import { displayReport, exportReportMarkdown } from "./report/index.ts"
 import { detectServerInfo } from "./ssh/index.ts"
@@ -166,7 +166,11 @@ async function executeAndReport(
   outro(pc.green(pc.bold("Server hardening complete!")))
 }
 
-export async function run(args: RunArgs, connection: ConnectionResult, presetOptions?: HardeningOptions): Promise<void> {
+export async function run(
+  args: RunArgs,
+  connection: ConnectionResult,
+  presetOptions?: HardeningOptions,
+): Promise<void> {
   const { isDryRun, wantLog } = args
   const { client, host, username, mode } = connection
 

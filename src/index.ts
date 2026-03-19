@@ -6,12 +6,7 @@ import { initVersion, parseArgs, showBanner } from "./cli/index.ts"
 import { selectMode } from "./connection/index.ts"
 import { run } from "./orchestrator.ts"
 import { detectHostPlatform } from "./platform/index.ts"
-import {
-  BUILT_IN_PRESETS,
-  listCustomPresets,
-  loadPreset,
-  presetToHardeningOptions,
-} from "./presets/index.ts"
+import { BUILT_IN_PRESETS, listCustomPresets, loadPreset, presetToHardeningOptions } from "./presets/index.ts"
 import { detectServerInfo } from "./ssh/index.ts"
 import type { HardeningOptions, Preset } from "./types.ts"
 

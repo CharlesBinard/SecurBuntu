@@ -1,5 +1,5 @@
-import { resolveHome } from "../platform/home.ts"
 import { join } from "path"
+import { resolveHome } from "../platform/home.ts"
 
 export function getConfigDir(): string {
   const home = resolveHome()

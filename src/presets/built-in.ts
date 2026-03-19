@@ -18,16 +18,7 @@ const ALL_SYSCTL = {
   disableIcmpBroadcast: true,
 }
 
-const ALL_SERVICES = [
-  "cups",
-  "avahi-daemon",
-  "bluetooth",
-  "ModemManager",
-  "whoopsie",
-  "apport",
-  "snapd",
-  "rpcbind",
-]
+const ALL_SERVICES = ["cups", "avahi-daemon", "bluetooth", "ModemManager", "whoopsie", "apport", "snapd", "rpcbind"]
 
 export const BUILT_IN_PRESETS: Record<string, Preset> = {
   minimal: {

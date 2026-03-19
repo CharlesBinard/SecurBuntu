@@ -64,7 +64,7 @@ export function validatePreset(data: unknown): asserts data is Preset {
   }
   for (const entry of options.ufwPorts as unknown[]) {
     const port = entry as Record<string, unknown>
-    if (!port.port || !port.protocol || !port.comment) {
+    if (!(port.port && port.protocol && port.comment)) {
       throw new Error(`Preset '${obj.name}' is invalid: each ufwPorts entry must have port, protocol, and comment`)
     }
     if (!["tcp", "udp", "both"].includes(port.protocol as string)) {
@@ -73,9 +73,7 @@ export function validatePreset(data: unknown): asserts data is Preset {
   }
 
   if (!VALID_ROOT_LOGIN.includes(options.permitRootLogin as string)) {
-    throw new Error(
-      `Preset '${obj.name}' is invalid: 'permitRootLogin' must be one of: ${VALID_ROOT_LOGIN.join(", ")}`,
-    )
+    throw new Error(`Preset '${obj.name}' is invalid: 'permitRootLogin' must be one of: ${VALID_ROOT_LOGIN.join(", ")}`)
   }
 
   if (options.changeSshPort === true && (options.newSshPort === undefined || options.newSshPort === null)) {
@@ -114,9 +112,7 @@ export async function loadPreset(nameOrPath: string): Promise<Preset> {
   const presetsDir = getPresetsDir()
   const filePath = join(presetsDir, `${nameOrPath}.json`)
   if (!existsSync(filePath)) {
-    throw new Error(
-      `Preset '${nameOrPath}' not found. Not a built-in preset and no file at ${filePath}`,
-    )
+    throw new Error(`Preset '${nameOrPath}' not found. Not a built-in preset and no file at ${filePath}`)
   }
 
   const file = Bun.file(filePath)

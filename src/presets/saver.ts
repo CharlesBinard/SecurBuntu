@@ -36,12 +36,7 @@ function hardeningToPresetOptions(options: HardeningOptions): PresetOptions {
   }
 }
 
-export function savePreset(
-  name: string,
-  options: HardeningOptions,
-  description: string,
-  presetsDir?: string,
-): string {
+export function savePreset(name: string, options: HardeningOptions, description: string, presetsDir?: string): string {
   const sanitized = sanitizeName(name)
 
   if (BUILT_IN_PRESETS[sanitized]) {
